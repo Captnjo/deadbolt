@@ -8,7 +8,7 @@ public enum WalletSource: Sendable, Equatable {
 
 public struct Wallet: Sendable, Identifiable {
     public let publicKey: SolanaPublicKey
-    public let name: String
+    public var name: String
     public let source: WalletSource
 
     public var id: String { publicKey.base58 }

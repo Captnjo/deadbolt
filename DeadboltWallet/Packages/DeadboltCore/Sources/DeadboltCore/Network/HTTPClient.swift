@@ -56,7 +56,7 @@ public actor HTTPClient {
 
     // MARK: - REST GET
 
-    public func get<T: Decodable>(url: URL, queryItems: [URLQueryItem] = [], timeout: TimeInterval = HTTPClient.restTimeout) async throws -> T {
+    public func get<T: Decodable>(url: URL, queryItems: [URLQueryItem] = [], headers: [String: String] = [:], timeout: TimeInterval = HTTPClient.restTimeout) async throws -> T {
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             throw SolanaError.decodingError("Invalid URL: \(url)")
         }
@@ -70,6 +70,9 @@ public actor HTTPClient {
 
         var request = URLRequest(url: finalURL)
         request.timeoutInterval = timeout
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
         let (data, response) = try await session.data(for: request)
 
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
@@ -81,11 +84,14 @@ public actor HTTPClient {
 
     // MARK: - REST POST (JSON body)
 
-    public func post<T: Decodable>(url: URL, body: some Encodable, timeout: TimeInterval = HTTPClient.restTimeout) async throws -> T {
+    public func post<T: Decodable>(url: URL, body: some Encodable, headers: [String: String] = [:], timeout: TimeInterval = HTTPClient.restTimeout) async throws -> T {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await session.data(for: request)

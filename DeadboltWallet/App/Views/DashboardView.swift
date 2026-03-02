@@ -6,6 +6,7 @@ import HardwareWallet
 
 struct DashboardView: View {
     @EnvironmentObject var walletService: WalletService
+    @EnvironmentObject var authService: AuthService
     @State private var activeSheet: ActiveSheet?
     @State private var hwConnected = false
     @State private var showErrorAlert = false
@@ -87,11 +88,13 @@ struct DashboardView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .send:
-                SendFlowView(walletService: walletService)
+                SendFlowView(walletService: walletService, authService: authService)
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             case .sendToken:
-                SendTokenFlowView(walletService: walletService)
+                SendTokenFlowView(walletService: walletService, authService: authService)
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             case .sendNFT:
                 SendNFTFlowView()
                     .environmentObject(walletService)
@@ -99,11 +102,13 @@ struct DashboardView: View {
                 ReceiveView()
                     .environmentObject(walletService)
             case .swap:
-                SwapFlowView(walletService: walletService)
+                SwapFlowView(walletService: walletService, authService: authService)
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             case .stake:
-                StakeFlowView(walletService: walletService)
+                StakeFlowView(walletService: walletService, authService: authService)
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             case .history:
                 if let wallet = walletService.activeWallet {
                     TransactionHistoryView(walletAddress: wallet.address)
@@ -112,6 +117,7 @@ struct DashboardView: View {
             case .wallets:
                 WalletListView()
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             case .addressBook:
                 AddressBookView()
             case .nativeStake:

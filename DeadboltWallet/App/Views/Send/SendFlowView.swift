@@ -6,8 +6,8 @@ struct SendFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SendViewModel
 
-    init(walletService: WalletService) {
-        _viewModel = StateObject(wrappedValue: SendViewModel(walletService: walletService))
+    init(walletService: WalletService, authService: AuthService) {
+        _viewModel = StateObject(wrappedValue: SendViewModel(walletService: walletService, authService: authService))
     }
 
     var body: some View {
@@ -152,6 +152,19 @@ struct SendFlowView: View {
 
     private var confirmingStep: some View {
         VStack(spacing: 20) {
+            if let prompt = viewModel.hardwareWalletPrompt {
+                HStack(spacing: 8) {
+                    Image(systemName: "cpu")
+                        .symbolEffect(.pulse)
+                    Text(prompt)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(.orange)
+                .padding()
+                .background(.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
             ConfirmationView(tracker: viewModel.confirmationTracker)
 
             Spacer()

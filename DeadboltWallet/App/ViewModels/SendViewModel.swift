@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import DeadboltCore
-import LocalAuthentication
 #if os(macOS)
 import HardwareWallet
 #endif
@@ -27,6 +26,7 @@ final class SendViewModel: ObservableObject {
     let confirmationTracker: ConfirmationTracker
 
     private let walletService: WalletService
+    private let authService: AuthService
     private let transactionBuilder: TransactionBuilder
     private let rpcClient: SolanaRPCClient
     #if os(macOS)
@@ -41,8 +41,9 @@ final class SendViewModel: ObservableObject {
         return rounded
     }
 
-    init(walletService: WalletService) {
+    init(walletService: WalletService, authService: AuthService) {
         self.walletService = walletService
+        self.authService = authService
         let rpcURL = AppConfig.defaultRPCURL
         self.rpcClient = SolanaRPCClient(rpcURL: rpcURL)
         self.transactionBuilder = TransactionBuilder(rpcClient: rpcClient)
@@ -97,24 +98,41 @@ final class SendViewModel: ObservableObject {
         hardwareWalletPrompt = nil
 
         do {
-            // Require biometric/password auth for hot wallets
+            // Require auth for hot wallets
             if !isHardwareWallet {
-                try await authenticateUser()
+                guard await authService.authenticate(reason: "Approve transaction signing") else {
+                    errorMessage = "Authentication required"
+                    return
+                }
             }
 
             let signer = try await loadSigner(for: wallet)
             let recipient = try SolanaPublicKey(base58: recipientAddress)
 
-            // Build and sign transaction
+            // Show a "preparing" prompt — the real "press button" prompt appears
+            // via the onAwaitingConfirmation callback once the ESP32 is actually ready
+            if isHardwareWallet {
+                hardwareWalletPrompt = "Preparing transaction for hardware signing..."
+            }
+
+            // Build and sign transaction (no Jito tip on devnet)
+            let tip: UInt64 = AppConfig.defaultNetwork == .mainnet ? JitoTip.defaultTipLamports : 0
             let (transaction, txFees) = try await transactionBuilder.buildSendSOL(
                 from: signer,
                 to: recipient,
-                lamports: amountLamports
+                lamports: amountLamports,
+                tipLamports: tip
             )
             self.fees = txFees
+            hardwareWalletPrompt = nil
 
-            // Submit via Jito
-            let signature = try await transactionBuilder.submitViaJito(transaction: transaction)
+            // Submit via Jito on mainnet, standard RPC on devnet
+            let signature: String
+            if AppConfig.defaultNetwork == .mainnet {
+                signature = try await transactionBuilder.submitViaJito(transaction: transaction)
+            } else {
+                signature = try await transactionBuilder.submitViaRPC(transaction: transaction)
+            }
 
             // Track confirmation
             await confirmationTracker.track(signature: signature)
@@ -127,16 +145,27 @@ final class SendViewModel: ObservableObject {
     private func simulateTransaction() {
         simulationStatus = .pending
 
+        // Skip simulation for hardware wallets — connecting to ESP32 just for
+        // simulation is disruptive and can fail. The real signing happens in approve().
+        if isHardwareWallet {
+            let tip: UInt64 = AppConfig.defaultNetwork == .mainnet ? JitoTip.defaultTipLamports : 0
+            fees = TransactionFees(baseFee: 5000, priorityFee: 0, tipAmount: tip)
+            simulationStatus = .success(computeUnits: 0)
+            return
+        }
+
         Task {
             do {
                 guard let wallet = walletService.activeWallet else { return }
                 let signer = try await loadSigner(for: wallet)
                 let recipient = try SolanaPublicKey(base58: recipientAddress)
 
+                let simTip: UInt64 = AppConfig.defaultNetwork == .mainnet ? JitoTip.defaultTipLamports : 0
                 let (transaction, txFees) = try await transactionBuilder.buildSendSOL(
                     from: signer,
                     to: recipient,
-                    lamports: amountLamports
+                    lamports: amountLamports,
+                    tipLamports: simTip
                 )
                 self.fees = txFees
 
@@ -153,22 +182,6 @@ final class SendViewModel: ObservableObject {
                 simulationStatus = .failed(error: error.localizedDescription)
             }
         }
-    }
-
-    private func authenticateUser() async throws {
-        let context = LAContext()
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            #if DEBUG
-            return // Allow through in debug builds (VMs, CI)
-            #else
-            throw SolanaError.authenticationFailed("Device authentication is required but not configured. Set a password or enable Touch ID in System Settings.")
-            #endif
-        }
-        try await context.evaluatePolicy(
-            .deviceOwnerAuthentication,
-            localizedReason: "Approve transaction signing"
-        )
     }
 
     /// Load the appropriate signer for the given wallet source.
@@ -203,7 +216,14 @@ final class SendViewModel: ObservableObject {
         guard let port = ORSSerialPortAdapter(path: portPath, baudRate: ESP32SerialBridge.defaultBaudRate) else {
             throw SolanaError.decodingError("Failed to open serial port at \(portPath)")
         }
-        let bridge = ESP32SerialBridge(port: port)
+
+        // The callback fires when the ESP32 enters AWAITING_CONFIRM (after "pending" response).
+        // Only then should the user press the BOOT button.
+        let bridge = ESP32SerialBridge(port: port, onAwaitingConfirmation: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.hardwareWalletPrompt = "Press BOOT button on ESP32 to approve transaction"
+            }
+        })
         try await bridge.connect()
 
         // Verify device identity matches registered wallet
@@ -214,7 +234,6 @@ final class SendViewModel: ObservableObject {
         }
 
         self.esp32Bridge = bridge
-        hardwareWalletPrompt = "Press BOOT button on ESP32 to approve transaction"
         return bridge
     }
     #endif
