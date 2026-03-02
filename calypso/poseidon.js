@@ -2,9 +2,12 @@ const web3 = require("@solana/web3.js");
 const axios = require("axios");
 const bs58 = require("bs58");
 const fs = require('fs').promises;
+const hwSigner = require('./hw_signer');
 
 // Create a connection to the Solana network
 const connection = new web3.Connection("https://mainnet.helius-rpc.com/?api-key=API");
+
+function isHardwarePort(path) { return path.startsWith('/dev/'); }
 
 // Function to get swap quote
 async function getSwapQuote(inputMint, outputMint, amount) {
@@ -31,10 +34,10 @@ async function getSwapQuote(inputMint, outputMint, amount) {
 }
 
 // Function to submit the swap transaction
-async function getSwapTransaction(quote, fromAccount, inputMint, connection) {
+async function getSwapTransaction(quote, fromPublicKey, signVersionedTx, inputMint, connection) {
     try {
         const apiUrl = 'https://api.sanctum.so/v1/swap';
-        
+
         // Prepare the transaction request body using inputMint dynamically
         const txRequestBody = {
             amount: quote.inAmount,
@@ -49,7 +52,7 @@ async function getSwapTransaction(quote, fromAccount, inputMint, connection) {
                 }
             },
             quotedAmount: quote.outAmount,
-            signer: fromAccount.publicKey.toString(),
+            signer: fromPublicKey.toString(),
             srcAcc: null,
             swapSrc: quote.swapSrc
         };
@@ -69,8 +72,8 @@ async function getSwapTransaction(quote, fromAccount, inputMint, connection) {
         const swapTransactionBuf = Buffer.from(txEncoded, 'base64');
         const transaction = web3.VersionedTransaction.deserialize(swapTransactionBuf);
 
-        // Sign the transaction with the array of signers
-        transaction.sign([fromAccount]);
+        // Sign the transaction
+        await signVersionedTx(transaction);
         let swapTransaction = transaction.serialize();
         return swapTransaction
     } catch (error) {
@@ -78,27 +81,26 @@ async function getSwapTransaction(quote, fromAccount, inputMint, connection) {
     }
 }
 
-async function createTipTransaction(fromAccount, tipAccount1, tipAccount2, amountLamports) {
+async function createTipTransaction(fromPublicKey, signLegacyTx, tipAccount1, tipAccount2, amountLamports) {
     const tipTransaction = new web3.Transaction();
-    tipTransaction.feePayer = fromAccount.publicKey;
+    tipTransaction.feePayer = fromPublicKey;
     const blockhash = await connection.getLatestBlockhash();
     tipTransaction.recentBlockhash = blockhash.blockhash;
-    tipTransaction.feePayer = fromAccount.publicKey;
 
     tipTransaction.add(
         web3.SystemProgram.transfer({
-            fromPubkey: fromAccount.publicKey,
+            fromPubkey: fromPublicKey,
             toPubkey: new web3.PublicKey(tipAccount1),
             lamports: amountLamports
         }),
         web3.SystemProgram.transfer({
-            fromPubkey: fromAccount.publicKey,
+            fromPubkey: fromPublicKey,
             toPubkey: new web3.PublicKey(tipAccount2),
             lamports: amountLamports
         })
     );
 
-    tipTransaction.sign(fromAccount);
+    await signLegacyTx(tipTransaction);
     return tipTransaction.serialize();
 }
 
@@ -126,20 +128,43 @@ async function sendBundle(transactions) {
 
 // Main function to process command line arguments and execute the swap
 async function poseidon(inputMint, outputMint, amount, keypairPath) {
-    const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
-    const secretKey = Uint8Array.from(JSON.parse(keypairData));
-    const fromAccount = web3.Keypair.fromSecretKey(secretKey);
-    
+    let fromPublicKey, signVersionedTx, signLegacyTx, cleanup;
+
+    if (isHardwarePort(keypairPath)) {
+        const signer = await hwSigner.connect(keypairPath);
+        fromPublicKey = new web3.PublicKey(signer.publicKeyBytes);
+        signVersionedTx = async (tx) => {
+            const msgBytes = tx.message.serialize();
+            const sig = await signer.sign(msgBytes);
+            tx.addSignature(fromPublicKey, sig);
+        };
+        signLegacyTx = async (tx) => {
+            const msgBytes = tx.serializeMessage();
+            const sig = await signer.sign(msgBytes);
+            tx.addSignature(fromPublicKey, sig);
+        };
+        cleanup = () => signer.close();
+    } else {
+        const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
+        const secretKey = Uint8Array.from(JSON.parse(keypairData));
+        const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+        fromPublicKey = fromAccount.publicKey;
+        signVersionedTx = async (tx) => { tx.sign([fromAccount]); };
+        signLegacyTx = async (tx) => { tx.sign(fromAccount); };
+        cleanup = () => {};
+    }
+
     const quote = await getSwapQuote(inputMint, outputMint, amount);
     console.log('Swap Quote:', quote);
 
     // Use the quote to submit the transaction
-    const swapTxSerialized = await getSwapTransaction(quote, fromAccount, inputMint, connection);
+    const swapTxSerialized = await getSwapTransaction(quote, fromPublicKey, signVersionedTx, inputMint, connection);
     // Tip transaction
     const tipAccount1 = "juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp";
     const tipAccount2 = "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL";
-    const tipTxSerialized = await createTipTransaction(fromAccount, tipAccount1, tipAccount2, 10000); // 0.01 SOL to each tip account
+    const tipTxSerialized = await createTipTransaction(fromPublicKey, signLegacyTx, tipAccount1, tipAccount2, 10000);
 
+    cleanup();
     const bundleId = await sendBundle([swapTxSerialized, tipTxSerialized]);
     console.log(`Bundle submitted with ID: ${bundleId}`);
 }

@@ -1,0 +1,12 @@
+{
+  "name": "deadbolt-wallet",
+  "version": "0.1.0",
+  "description": "Control the Deadbolt DIY hardware wallet for Solana — send SOL/tokens, swap via Jupiter, stake via Sanctum. All transactions require human approval.",
+  "author": "deadbolt",
+  "license": "MIT",
+  "tags": ["solana", "wallet", "defi", "hardware-wallet", "jupiter", "sanctum", "agent"],
+  "requires": {
+    "env": ["DEADBOLT_API_TOKEN"],
+    "bins": ["python3"]
+  }
+}
