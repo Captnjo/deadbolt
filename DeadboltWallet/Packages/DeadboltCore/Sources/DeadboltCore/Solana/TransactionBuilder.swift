@@ -10,7 +10,7 @@ public actor TransactionBuilder {
     public init(
         rpcClient: SolanaRPCClient,
         jitoClient: JitoClient = JitoClient(),
-        jupiterClient: JupiterClient = JupiterClient(),
+        jupiterClient: JupiterClient = JupiterClient(apiKey: AppConfig.defaultJupiterAPIKey),
         sanctumClient: SanctumClient = SanctumClient()
     ) {
         self.rpcClient = rpcClient
@@ -295,6 +295,52 @@ public actor TransactionBuilder {
     public func submitSwapViaJito(transaction: VersionedTransaction) async throws -> String {
         let serialized = transaction.serialize()
         return try await jitoClient.sendBundle(serializedTransactions: [serialized])
+    }
+
+    // MARK: - DFlow Swap
+
+    /// Build a signed swap transaction from a DFlow order.
+    ///
+    /// DFlow returns a ready-to-sign VersionedTransaction as base64.
+    /// We deserialize it, verify the fee payer matches, and sign.
+    ///
+    /// - Parameters:
+    ///   - orderBase64: The base64-encoded transaction from DFlow
+    ///   - signer: The transaction signer
+    /// - Returns: A signed VersionedTransaction
+    public func buildDFlowSwap(
+        orderBase64: String,
+        signer: TransactionSigner
+    ) async throws -> VersionedTransaction {
+        guard let txData = Data(base64Encoded: orderBase64) else {
+            throw SolanaError.decodingError("Invalid base64 in DFlow order response")
+        }
+        var transaction = try VersionedTransaction.deserialize(from: txData)
+
+        // Verify fee payer matches our signer (prevent malicious pre-built tx)
+        let feePayer: SolanaPublicKey
+        switch transaction.message {
+        case .legacy(let msg): feePayer = msg.accountKeys[0]
+        case .v0(let msg): feePayer = msg.accountKeys[0]
+        }
+        guard feePayer == signer.publicKey else {
+            throw SolanaError.decodingError("DFlow transaction fee payer (\(feePayer.base58.prefix(8))...) does not match wallet (\(signer.publicKey.base58.prefix(8))...)")
+        }
+
+        try await transaction.sign(with: signer)
+        return transaction
+    }
+
+    /// Submit a DFlow swap transaction directly via RPC.
+    ///
+    /// DFlow transactions are submitted as individual transactions (not Jito bundles)
+    /// since they don't need MEV protection — DFlow handles that internally.
+    ///
+    /// - Parameter transaction: The signed versioned transaction
+    /// - Returns: The transaction signature
+    public func submitDFlowSwap(transaction: VersionedTransaction) async throws -> String {
+        let base64 = transaction.serializeBase64()
+        return try await rpcClient.sendTransaction(encodedTransaction: base64, skipPreflight: true)
     }
 
     // MARK: - Sanctum Liquid Staking

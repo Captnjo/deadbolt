@@ -1,7 +1,7 @@
 import SwiftUI
 import DeadboltCore
 
-/// P4-010: Display Jupiter swap quote details.
+/// P4-010: Display swap quote details (Jupiter or DFlow).
 /// Shows exchange rate, price impact, minimum received, and route info.
 /// Auto-refreshes the quote periodically.
 struct SwapQuoteView: View {
@@ -11,6 +11,7 @@ struct SwapQuoteView: View {
     let inputDecimals: Int
     let outputDecimals: Int
     let isRefreshing: Bool
+    let aggregatorName: String
     let onRefresh: () -> Void
 
     private var inputAmount: Double {
@@ -35,6 +36,9 @@ struct SwapQuoteView: View {
             HStack {
                 Text("Quote")
                     .font(.headline)
+                Text("via \(aggregatorName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 if isRefreshing {
                     ProgressView()
@@ -117,5 +121,69 @@ struct SwapQuoteView: View {
 
     private func formatAmount(_ amount: Double) -> String {
         DashboardViewModel.formatTokenAmount(amount)
+    }
+}
+
+// MARK: - DFlow Quote View
+
+/// Minimal quote display for DFlow orders.
+/// DFlow returns a ready-to-sign transaction without detailed route info.
+struct DFlowQuoteView: View {
+    let inputTokenName: String
+    let outputTokenName: String
+    let inputAmount: String
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Quote")
+                    .font(.headline)
+                Text("via DFlow")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Button {
+                        onRefresh()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Divider()
+
+            HStack {
+                Text("Swap")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(inputAmount) \(inputTokenName) -> \(outputTokenName)")
+                    .fontWeight(.medium)
+                    .monospacedDigit()
+            }
+
+            HStack {
+                Text("Slippage Tolerance")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("0.50%")
+                    .fontWeight(.medium)
+                    .monospacedDigit()
+            }
+
+            Text("DFlow provides MEV-protected execution. Exact output determined at execution.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(.quaternary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

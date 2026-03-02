@@ -19,7 +19,8 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
             ],
             path: "App",
-            exclude: ["iOS/Info.plist"]
+            exclude: ["iOS/Info.plist"],
+            resources: [.copy("Resources/AppIcon.png")]
         ),
     ]
 )

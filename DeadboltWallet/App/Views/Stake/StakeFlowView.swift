@@ -8,8 +8,8 @@ struct StakeFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: StakeViewModel
 
-    init(walletService: WalletService) {
-        _viewModel = StateObject(wrappedValue: StakeViewModel(walletService: walletService))
+    init(walletService: WalletService, authService: AuthService) {
+        _viewModel = StateObject(wrappedValue: StakeViewModel(walletService: walletService, authService: authService))
     }
 
     var body: some View {

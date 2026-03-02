@@ -10,7 +10,7 @@ final class AgentService: ObservableObject {
     @Published var pendingRequestCount = 0
     @Published var currentRequest: AgentRequest?
     @Published var serverError: String?
-    @Published var apiToken: String?
+    @Published var apiTokens: [APIKey] = []
 
     let requestQueue = RequestQueue()
     private(set) var guardrailsEngine: GuardrailsEngine?
@@ -31,14 +31,8 @@ final class AgentService: ObservableObject {
             // First launch — no config file yet
         }
 
-        // Ensure we have an API token
-        if await config.apiToken == nil {
-            let token = await config.generateAPIToken()
-            try? await config.save()
-            apiToken = token
-        } else {
-            apiToken = await config.apiToken
-        }
+        // Load existing API keys
+        apiTokens = await config.apiTokens
 
         let engine = GuardrailsEngine(config: config)
         self.guardrailsEngine = engine
@@ -73,18 +67,18 @@ final class AgentService: ObservableObject {
         isServerRunning = false
     }
 
-    func regenerateToken() async {
+    func addToken(label: String) async {
         guard let config = config else { return }
-        let token = await config.generateAPIToken()
+        let key = await config.generateAPIToken(label: label)
         try? await config.save()
-        apiToken = token
+        apiTokens.append(key)
     }
 
-    func revokeToken() async {
+    func removeToken(id: String) async {
         guard let config = config else { return }
-        await config.update(apiToken: nil)
+        await config.removeAPIToken(id: id)
         try? await config.save()
-        apiToken = nil
+        apiTokens.removeAll { $0.id == id }
     }
 
     // MARK: - Request Management

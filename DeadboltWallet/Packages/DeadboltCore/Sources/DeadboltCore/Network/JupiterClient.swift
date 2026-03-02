@@ -1,11 +1,18 @@
 import Foundation
 
 /// Client for the Jupiter V6 Swap API (quote + swap-instructions endpoints).
+/// Requires an API key — generate one free at https://portal.jup.ag
 public actor JupiterClient {
     private let httpClient: HTTPClient
+    private let apiKey: String
     private let baseURL = URL(string: "https://api.jup.ag")!
 
-    public init(httpClient: HTTPClient = HTTPClient()) {
+    private var authHeaders: [String: String] {
+        ["x-api-key": apiKey]
+    }
+
+    public init(apiKey: String, httpClient: HTTPClient = HTTPClient()) {
+        self.apiKey = apiKey
         self.httpClient = httpClient
     }
 
@@ -31,7 +38,7 @@ public actor JupiterClient {
             URLQueryItem(name: "amount", value: String(amount)),
             URLQueryItem(name: "slippageBps", value: String(slippageBps)),
         ]
-        return try await httpClient.get(url: url, queryItems: queryItems)
+        return try await httpClient.get(url: url, queryItems: queryItems, headers: authHeaders)
     }
 
     // MARK: - POST /swap/v1/swap-instructions
@@ -47,7 +54,7 @@ public actor JupiterClient {
     ) async throws -> JupiterSwapInstructions {
         let url = baseURL.appendingPathComponent("swap/v1/swap-instructions")
         let body = SwapInstructionsRequest(quoteResponse: quote, userPublicKey: userPublicKey)
-        return try await httpClient.post(url: url, body: body)
+        return try await httpClient.post(url: url, body: body, headers: authHeaders)
     }
 }
 
