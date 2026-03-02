@@ -90,13 +90,14 @@ public actor AppConfig {
     private let filePath: String
 
     /// Initialize with a custom file path (useful for testing).
-    /// Defaults are: Helius mainnet RPC, no active wallet, Jito enabled.
+    /// Automatically loads persisted config from disk if the file exists.
     public init(filePath: String? = nil) {
         let path = filePath ?? {
             let base = DeadboltDirectories.dataDirectory
             return "\(base)/config.json"
         }()
         self.filePath = path
+        // Defaults (overwritten by loadSync if config file exists)
         self.network = .mainnet
         self.rpcURL = SolanaNetwork.mainnet.rpcURL(heliusAPIKey: AppConfig.defaultHeliusAPIKey).absoluteString
         self.activeWalletAddress = nil
@@ -110,6 +111,36 @@ public actor AppConfig {
         self.authMode = "system"
         self.allowBiometricBypass = true
         self.walletNames = [:]
+        // Auto-load persisted config so callers never forget
+        loadSync()
+    }
+
+    /// Synchronously load config from disk (called from init).
+    private func loadSync() {
+        guard FileManager.default.fileExists(atPath: filePath),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)),
+              let stored = try? JSONDecoder().decode(StoredConfig.self, from: data) else {
+            return
+        }
+        rpcURL = stored.rpcURL
+        network = stored.network ?? .mainnet
+        activeWalletAddress = stored.activeWalletAddress
+        jitoEnabled = stored.jitoEnabled
+        if let tokens = stored.apiTokens, !tokens.isEmpty {
+            apiTokens = tokens
+        } else if let legacy = stored.apiToken, !legacy.isEmpty {
+            apiTokens = [APIKey(label: "Default", token: legacy)]
+        } else {
+            apiTokens = []
+        }
+        heliusAPIKey = stored.heliusAPIKey
+        jupiterAPIKey = stored.jupiterAPIKey
+        dflowAPIKey = stored.dflowAPIKey
+        preferredSwapAggregator = stored.preferredSwapAggregator ?? "dflow"
+        guardrails = stored.guardrails ?? GuardrailsConfig()
+        authMode = stored.authMode ?? "system"
+        allowBiometricBypass = stored.allowBiometricBypass ?? true
+        walletNames = stored.walletNames ?? [:]
     }
 
     // MARK: - Persistence
