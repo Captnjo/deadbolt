@@ -3,8 +3,11 @@ const axios = require("axios");
 const bs58 = require("bs58");
 const fs = require('fs').promises;
 const fetch = require('node-fetch'); // Ensure node-fetch is installed
+const hwSigner = require('./hw_signer');
 
 const connection = new web3.Connection("https://damp-fabled-panorama.solana-mainnet.quiknode.pro/APIKEY/");
+
+function isHardwarePort(path) { return path.startsWith('/dev/'); }
 
 async function sendTransactionJito(serializedTransaction) {
     const encodedTx = bs58.encode(serializedTransaction);
@@ -54,20 +57,33 @@ async function getJupiterSwapInstructions(fromAccountPublicKey, inputMint, outpu
 }
 
 async function createPaymentTx(inputMint, outputMint, amountLamports, slippageBps, keypairPath) {
-    const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
-    const secretKey = Uint8Array.from(JSON.parse(keypairData));
-    const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+    let fromPublicKey, signTransaction, cleanup;
 
-    
+    if (isHardwarePort(keypairPath)) {
+        const signer = await hwSigner.connect(keypairPath);
+        fromPublicKey = new web3.PublicKey(signer.publicKeyBytes);
+        signTransaction = async (tx) => {
+            const msgBytes = tx.serializeMessage();
+            const sig = await signer.sign(msgBytes);
+            tx.addSignature(fromPublicKey, sig);
+        };
+        cleanup = () => signer.close();
+    } else {
+        const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
+        const secretKey = Uint8Array.from(JSON.parse(keypairData));
+        const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+        fromPublicKey = fromAccount.publicKey;
+        signTransaction = async (tx) => { tx.sign(fromAccount); };
+        cleanup = () => {};
+    }
 
     // Get Jupiter swap instructions
-    const swapInstructionsResponse = await getJupiterSwapInstructions(fromAccount.publicKey, inputMint, outputMint, amountLamports, slippageBps);
-    //console.log(swapInstructionsResponse)
+    const swapInstructionsResponse = await getJupiterSwapInstructions(fromPublicKey, inputMint, outputMint, amountLamports, slippageBps);
     // Construct transaction with swap instructions and tip transfers
     const blockhash = await connection.getLatestBlockhash();
     const transaction = new web3.Transaction();
     transaction.recentBlockhash = blockhash.blockhash;
-    transaction.feePayer = fromAccount.publicKey;
+    transaction.feePayer = fromPublicKey;
 
     // Add compute budget instructions
     swapInstructionsResponse.computeBudgetInstructions.forEach(instructionData => {
@@ -90,19 +106,20 @@ async function createPaymentTx(inputMint, outputMint, amountLamports, slippageBp
     // Add tip transfers
     transaction.add(
         web3.SystemProgram.transfer({
-            fromPubkey: fromAccount.publicKey,
-            toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Unruggable tip account
+            fromPubkey: fromPublicKey,
+            toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Deadbolt tip account
             lamports: 100_000, // tip
         }),
         web3.SystemProgram.transfer({
-            fromPubkey: fromAccount.publicKey,
+            fromPubkey: fromPublicKey,
             toPubkey: new web3.PublicKey("DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL"), // Jito tip account
             lamports: 100_000, // tip
         }),
     );
 
-    transaction.sign(fromAccount); // Sign the transaction
+    await signTransaction(transaction);
     const rawTransaction = transaction.serialize();
+    cleanup();
     const txid = await sendTransactionJito(rawTransaction);
     console.log(`Transaction ID: ${txid}`);
     return txid;

@@ -1,5 +1,91 @@
-calypso/node_modules/*
-nftdata/*
-binaries/*
-
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.keystore
+credentials.json
+
+# ESP32 / Arduino
+firmware/**/build/
+firmware/**/.pio/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Project-specific
+nftdata/
+binaries/
+nfts.txt
+tokens.txt
+
+# AI agent/tool configs
+CLAUDE.md
+GEMINI.md
+ARCHITECTURE.md
+SECURITY_RECOMMENDATIONS.md
+.claude/
+.agents/
+
+# Keypairs & wallet files
+id-*.json
+keypair*.json
+*.secret
+
+# Tracker (internal dev state)
+tracker.md

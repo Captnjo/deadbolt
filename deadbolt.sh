@@ -2,20 +2,25 @@
 
 # Global variables
 RPC="https://mainnet.helius-rpc.com/?api-key=API"
-UNRUGGABLE_FOLDER="$HOME/.config/solana/unruggable"
-ADDRESS_BOOK_FILE="$HOME/.config/solana/unruggable/addressBook.txt"
-NFT_FILE="$HOME/.config/solana/unruggable/nfts.txt"
-TOKENS_FILE="$HOME/.config/solana/unruggable/tokens.txt"
-UNRUGGABLE_WALLET="$UNRUGGABLE_FOLDER/unruggable.json"
+DEADBOLT_FOLDER="$HOME/.config/solana/deadbolt"
+ADDRESS_BOOK_FILE="$HOME/.config/solana/deadbolt/addressBook.txt"
+NFT_FILE="$HOME/.config/solana/deadbolt/nfts.txt"
+TOKENS_FILE="$HOME/.config/solana/deadbolt/tokens.txt"
+DEADBOLT_WALLET="$DEADBOLT_FOLDER/deadbolt.json"
 CONFIG_DIR="$HOME/.config/solana/cli"
 CONFIG_FILE="$HOME/.config/solana/cli/config.yml"
-UNRUGGABLE_STAKING="$UNRUGGABLE_FOLDER/staking_keys"
+DEADBOLT_STAKING="$DEADBOLT_FOLDER/staking_keys"
 DEFAULT_KEYS_DIR="$HOME/.config/solana"
-SCRIPT_NAME="unruggable"
-SCRIPT_PATH="$UNRUGGABLE_FOLDER/$SCRIPT_NAME"
+SCRIPT_NAME="deadbolt"
+SCRIPT_PATH="$DEADBOLT_FOLDER/$SCRIPT_NAME"
 SOLANA_RELEASES_URL="https://github.com/solana-labs/solana/releases/latest/download"
-CALYPSO_FOLDER="$HOME/.config/solana/unruggable/calypso"
-PANTHEON=("calypso.js" "hermes.js" "hermesSpl.js" "poseidon.js")
+CALYPSO_FOLDER="$HOME/.config/solana/deadbolt/calypso"
+PANTHEON=("calypso.js" "hermes.js" "hermesSpl.js" "poseidon.js" "hw_signer.js")
+
+# Hardware wallet variables
+HW_PORT=""
+HW_ADDRESS=""
+HW_MODE=0
 
 # Function to detect the operating system
 detect_os() {
@@ -271,14 +276,14 @@ check_spl_token_cli_installed() {
     echo "spl-token cli is installed"
 }
 
-check_and_create_unruggable_folder() {
-    if [ ! -d "$UNRUGGABLE_FOLDER" ]; then
-        mkdir -p "$UNRUGGABLE_FOLDER"
-        chmod 700 "$UNRUGGABLE_FOLDER"
+check_and_create_deadbolt_folder() {
+    if [ ! -d "$DEADBOLT_FOLDER" ]; then
+        mkdir -p "$DEADBOLT_FOLDER"
+        chmod 700 "$DEADBOLT_FOLDER"
         if [ $? -eq 0 ]; then
-            echo "Unruggable folder created successfully."
+            echo "Deadbolt folder created successfully."
         else
-            echo "Error: Failed to create the folder $UNRUGGABLE_FOLDER."
+            echo "Error: Failed to create the folder $DEADBOLT_FOLDER."
             exit 1
         fi
     else
@@ -290,7 +295,7 @@ check_and_create_token_files() {
     # Check if the nft file exists
     if [ ! -f "$NFT_FILE" ]; then
         echo "nfts not located. Initializing."
-        cp nfts.txt "$UNRUGGABLE_FOLDER"
+        cp nfts.txt "$DEADBOLT_FOLDER"
 
         if [ $? -eq 0 ]; then
             echo "nft book initialized successfully."
@@ -326,7 +331,7 @@ check_and_create_token_files() {
     # Check if the token file exists
     if [ ! -f "$TOKENS_FILE" ]; then
         echo "tokens not located. Initializing."
-        cp tokens.txt "$UNRUGGABLE_FOLDER"
+        cp tokens.txt "$DEADBOLT_FOLDER"
 
         if [ $? -eq 0 ]; then
             echo "token book initialized successfully."
@@ -432,8 +437,8 @@ ensure_script_location_and_executability() {
             echo "Alias for '$SCRIPT_NAME' already exists in $PROFILE_FILE."
         fi
 
-        echo "Unruggable has been succesfully set up."
-        echo "Open any terminal and simply type unruggable to start the wallet."
+        echo "Deadbolt has been succesfully set up."
+        echo "Open any terminal and simply type deadbolt to start the wallet."
         #exit 0
     fi
 }
@@ -444,12 +449,12 @@ create_and_set_custom_solana_config() {
         mkdir -p "$CONFIG_DIR"
         echo "Configuration directory created at $CONFIG_DIR."
         # Write the new config settings to the config file
-        echo "Setting Solana config file to unruggable default..."
+        echo "Setting Solana config file to deadbolt default..."
         cat > "$CONFIG_FILE" <<EOF
 ---
 json_rpc_url: $RPC
 websocket_url: ''
-keypair_path: $UNRUGGABLE_WALLET
+keypair_path: $DEADBOLT_WALLET
 address_labels:
 '11111111111111111111111111111111': System Program
 commitment: confirmed
@@ -467,18 +472,18 @@ EOF
         echo "RPC URL updated to custom value."
     fi
 
-    # Check if the UNRUGGABLE_WALLET file exists
-    if [[ ! -f "$UNRUGGABLE_WALLET" ]]; then
-        echo "Generating new unruggable wallet starting with 'unr'..."
+    # Check if the DEADBOLT_WALLET file exists
+    if [[ ! -f "$DEADBOLT_WALLET" ]]; then
+        echo "Generating new deadbolt wallet starting with 'unr'..."
         # Capture the output of solana-keygen grind to find the generated keypair filename
         grind_output=$(solana-keygen grind --starts-with "unr":1)
         # Extract the filename from the output
         keypair_file=$(echo "$grind_output" | grep -o '[^ ]*.json')
-        # Move the keypair file to the UNRUGGABLE_WALLET location
-        mv "$keypair_file" "$UNRUGGABLE_WALLET"
+        # Move the keypair file to the DEADBOLT_WALLET location
+        mv "$keypair_file" "$DEADBOLT_WALLET"
         # Set the new wallet address in the config
-        new_wallet_address=$(solana address -k "$UNRUGGABLE_WALLET")
-        solana config set --keypair "$UNRUGGABLE_WALLET"
+        new_wallet_address=$(solana address -k "$DEADBOLT_WALLET")
+        solana config set --keypair "$DEADBOLT_WALLET"
         echo "New wallet address: $new_wallet_address"
     fi
 
@@ -538,27 +543,99 @@ run_pre_launch_checks() {
     check_solana_cli_installed
     check_spl_token_cli_installed
 
-    check_and_create_unruggable_folder
+    check_and_create_deadbolt_folder
     check_and_create_address_book
     check_and_create_token_files
     check_and_create_calypso_folder
     ensure_script_location_and_executability
     create_and_set_custom_solana_config
     init_prices
-    echo "All checks passed. Launching Unruggable..."
+    echo "All checks passed. Launching Deadbolt..."
 }
 
 
+# Hardware wallet functions
+detect_hw_port() {
+    # Look for ESP32 on common macOS USB serial ports
+    for port in /dev/cu.usbmodem*; do
+        if [ -e "$port" ]; then
+            echo "$port"
+            return 0
+        fi
+    done
+    return 1
+}
+
+connect_hardware_wallet() {
+    echo "Scanning for ESP32 hardware wallet..."
+    local port=$(detect_hw_port)
+    if [ -z "$port" ]; then
+        echo "No ESP32 detected. Make sure it's plugged in via USB."
+        return 1
+    fi
+
+    echo "Found device on $port"
+    echo "Connecting..."
+
+    # Get the address from ESP32 via Node.js bridge
+    local result=$(node -e "
+        const hw = require('$CALYPSO_FOLDER/hw_signer');
+        hw.connect('$port').then(s => {
+            console.log(s.address);
+            s.close();
+        }).catch(e => { console.error(e.message); process.exit(1); });
+    " 2>&1)
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to connect: $result"
+        return 1
+    fi
+
+    HW_PORT="$port"
+    HW_ADDRESS="$result"
+    HW_MODE=1
+    echo "Hardware wallet connected!"
+    echo "Address: $HW_ADDRESS"
+    echo "Port: $HW_PORT"
+}
+
+disconnect_hardware_wallet() {
+    HW_PORT=""
+    HW_ADDRESS=""
+    HW_MODE=0
+    echo "Hardware wallet disconnected. Using software wallet."
+}
+
+toggle_hardware_wallet() {
+    if [ $HW_MODE -eq 1 ]; then
+        disconnect_hardware_wallet
+    else
+        connect_hardware_wallet
+    fi
+}
+
+# Returns the effective keypair path - either HW port or solana config keypair
+get_effective_keypair() {
+    if [ $HW_MODE -eq 1 ]; then
+        echo "$HW_PORT"
+    else
+        config_output=$(solana config get)
+        echo "$config_output" | grep 'Keypair Path' | awk '{print $3}'
+    fi
+}
+
 # Function to get wallet and staked information
 get_wallet_info() {
-    # Get the current config
-    config_output=$(solana config get)
-
-    # Extract the keypair path
-    keypair_path=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}')
-
-    # Get the wallet address
-    wallet_address=$(solana address -k "$keypair_path")
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        # Get the current config
+        config_output=$(solana config get)
+        # Extract the keypair path
+        keypair_path=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}')
+        # Get the wallet address
+        wallet_address=$(solana address -k "$keypair_path")
+    fi
 
     # Get the balance
     balance=$(solana balance "$wallet_address")
@@ -567,9 +644,9 @@ get_wallet_info() {
     total_staked_sol=0
 
     # Check if the staking keys directory exists
-    if [ -d "$UNRUGGABLE_STAKING" ]; then
+    if [ -d "$DEADBOLT_STAKING" ]; then
         # Prepare a glob pattern for stake account files
-        stake_account_files_glob="$UNRUGGABLE_STAKING"/"$wallet_address"*.json
+        stake_account_files_glob="$DEADBOLT_STAKING"/"$wallet_address"*.json
 
         # Check if glob pattern expands to anything (if there are any files)
         # This is a workaround to check if a glob pattern matches any file
@@ -646,7 +723,11 @@ get_range_for_char() {
 
 receive_sol() {
     # Fetch the current wallet address
-    wallet_address=$(solana address)
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        wallet_address=$(solana address)
+    fi
     
     echo "Scan the below QR code, or copy the below address"
     echo "to receive Solana and or any other SPL token." 
@@ -704,14 +785,14 @@ send_sol() {
     while true; do
         echo "How would you like to send SOL?"
         echo "1 - Enter a Solana address."
-        echo "2 - Select from Unruggable loaded wallets."
+        echo "2 - Select from Deadbolt loaded wallets."
         echo "3 - Select from your address book."
         echo "9 - Return to home screen."
         read -p "Enter your choice (1, 2, 3, or 9): " send_choice
 
-        # Extract the Keypair Path from the solana config
+        # Get keypair path (hardware port or file)
+        keypair_path=$(get_effective_keypair)
         config_output=$(solana config get)
-        keypair_path=$(echo "$config_output" | grep "Keypair Path" | awk '{ print $NF }')
         keypair_dir=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}' | xargs dirname)
 
         if [[ $send_choice -eq 2 ]]; then
@@ -739,10 +820,10 @@ send_sol() {
             }
 
             # Check and process each unique directory
-            if [[ "$keypair_dir" != "$UNRUGGABLE_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
+            if [[ "$keypair_dir" != "$DEADBOLT_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
                 process_directory "$keypair_dir"
             fi
-            process_directory "$UNRUGGABLE_FOLDER"
+            process_directory "$DEADBOLT_FOLDER"
             process_directory "$DEFAULT_KEYS_DIR"
 
             read -p "Select the number of the wallet you want to send SOL to: " wallet_selection
@@ -908,7 +989,11 @@ send_sol() {
 
 display_tokens_and_send() {
     # Get the current wallet address
-    wallet_address=$(solana address)
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        wallet_address=$(solana address)
+    fi
     
     echo "Fetching tokens for wallet: $wallet_address"
     # Call the command and store the result in a variable
@@ -985,16 +1070,16 @@ display_tokens_and_send() {
         return 1
     fi
 
-    # Extract the Keypair Path from the solana config
+    # Get keypair path (hardware port or file)
+    keypair_path=$(get_effective_keypair)
     config_output=$(solana config get)
-    keypair_path=$(echo "$config_output" | grep "Keypair Path" | awk '{ print $NF }')
     keypair_dir=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}' | xargs dirname)
 
     # Now, implement the 'where to' structure similar to send_sol
     while true; do
         echo "How would you like to send $selected_token_name?"
         echo "1 - Enter a Solana address."
-        echo "2 - Select from Unruggable loaded wallets."
+        echo "2 - Select from Deadbolt loaded wallets."
         echo "3 - Select from your address book."
         echo "9 - Return to home screen."
         read -p "Enter your choice (1, 2, 3, or 9): " send_choice
@@ -1035,10 +1120,10 @@ display_tokens_and_send() {
                 }
 
                 # Check and process each unique directory
-                if [[ "$keypair_dir" != "$UNRUGGABLE_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
+                if [[ "$keypair_dir" != "$DEADBOLT_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
                     process_directory "$keypair_dir"
                 fi
-                process_directory "$UNRUGGABLE_FOLDER"
+                process_directory "$DEADBOLT_FOLDER"
                 process_directory "$DEFAULT_KEYS_DIR"
 
                 read -p "Select the number of the wallet you want to send SOL to: " wallet_selection
@@ -1174,7 +1259,11 @@ display_tokens_and_send() {
 
 display_nfts() {
     # Get the current wallet address
-    wallet_address=$(solana address)
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        wallet_address=$(solana address)
+    fi
     
     echo "Fetching NFTs for wallet: $wallet_address"
     # Call the command and store the result in a variable
@@ -1196,9 +1285,8 @@ display_nfts() {
         return
     fi
 
-    # Extract the Keypair Path from the solana config
-    config_output=$(solana config get)
-    keypair_path=$(echo "$config_output" | grep "Keypair Path" | awk '{ print $NF }')
+    # Get keypair path (hardware port or file)
+    keypair_path=$(get_effective_keypair)
 
     echo "--------------------------------------------------------------------------------"
     echo "|                               NFTs                                           |"
@@ -1249,7 +1337,7 @@ display_nfts() {
     while true; do
         echo "How would you like to send $selected_token_name?"
         echo "1 - Enter a Solana address."
-        echo "2 - Select from Unruggable loaded wallets."
+        echo "2 - Select from Deadbolt loaded wallets."
         echo "3 - Select from your address book."
         echo "9 - Return to home screen."
         read -p "Enter your choice (1, 2, 3, or 9): " send_choice
@@ -1290,10 +1378,10 @@ display_nfts() {
                 }
 
                 # Check and process each unique directory
-                if [[ "$keypair_dir" != "$UNRUGGABLE_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
+                if [[ "$keypair_dir" != "$DEADBOLT_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
                     process_directory "$keypair_dir"
                 fi
-                process_directory "$UNRUGGABLE_FOLDER"
+                process_directory "$DEADBOLT_FOLDER"
                 process_directory "$DEFAULT_KEYS_DIR"
 
                 read -p "Select the number of the wallet you want to send SOL to: " wallet_selection
@@ -1429,10 +1517,10 @@ create_and_delegate_stake_account() {
     echo "Checking for an existing stake account..."
 
     # Check if the staking keys directory exists, no need to make it if it already exists
-    if [ ! -d "$UNRUGGABLE_STAKING" ]; then
-        mkdir -p "$UNRUGGABLE_STAKING"
-        chmod 700 "$UNRUGGABLE_STAKING"
-        echo "Staking keys directory created at $UNRUGGABLE_STAKING"
+    if [ ! -d "$DEADBOLT_STAKING" ]; then
+        mkdir -p "$DEADBOLT_STAKING"
+        chmod 700 "$DEADBOLT_STAKING"
+        echo "Staking keys directory created at $DEADBOLT_STAKING"
     fi
 
     # Get the current config
@@ -1447,7 +1535,7 @@ create_and_delegate_stake_account() {
     max_seed=-1
 
     # Scan the directory for existing stake accounts and find the highest seed
-    for file in "$UNRUGGABLE_STAKING"/*; do
+    for file in "$DEADBOLT_STAKING"/*; do
         if [[ $file =~ .*_stake-account_([0-9]+)\.json$ ]]; then
             seed="${BASH_REMATCH[1]}"
             if (( seed > max_seed )); then
@@ -1460,7 +1548,7 @@ create_and_delegate_stake_account() {
     new_seed=$((max_seed + 1))
 
     # Define the new stake account file name with the new seed
-    stake_account_file="$UNRUGGABLE_STAKING/${wallet_address}_stake-account_${new_seed}.json"
+    stake_account_file="$DEADBOLT_STAKING/${wallet_address}_stake-account_${new_seed}.json"
 
     # Prompt user for the amount to stake, ensuring it's at least 0.1 SOL
     read -p "Enter the amount of SOL to stake (minimum 0.1 SOL): " stake_amount
@@ -1526,14 +1614,14 @@ manage_staked_sol() {
     # Define the directory for staking keys
     wallet_address=$(solana address -k "$keypair_path")
 
-    if [ ! -d "$UNRUGGABLE_STAKING" ]; then
+    if [ ! -d "$DEADBOLT_STAKING" ]; then
         echo "No staking keys directory found. Please stake SOL first."
         return
     fi
 
     local i=0
     declare -a stake_account_paths
-    for stake_account_file in "$UNRUGGABLE_STAKING"/"$wallet_address"*.json; do
+    for stake_account_file in "$DEADBOLT_STAKING"/"$wallet_address"*.json; do
         stake_account_address=$(solana address -k "$stake_account_file")
         # Fetch stake account info and filter for relevant lines
         stake_account_info=$(solana stake-account "$stake_account_address" --url $RPC | grep -E "Balance:|Stake account is")
@@ -1594,13 +1682,15 @@ stake_sol() {
 
 liquid_stake_sol() {
     echo "Fetching your SOL balance..."
-    wallet_address=$(solana address)
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        wallet_address=$(solana address)
+    fi
     # Fetch the balance and clean it by removing non-numeric characters except the decimal point
     sol_balance=$(solana balance "$wallet_address" | grep -o '[0-9.]*')
-    # Get the current config
-    config_output=$(solana config get)
-    # Extract the keypair path
-    keypair_path=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}')
+    # Get keypair path (hardware port or file)
+    keypair_path=$(get_effective_keypair)
     
 
     echo "Current SOL Balance: $sol_balance SOL"
@@ -1835,10 +1925,10 @@ display_available_wallets() {
     }
 
     # Check and process each unique directory
-    if [[ "$keypair_dir" != "$UNRUGGABLE_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
+    if [[ "$keypair_dir" != "$DEADBOLT_FOLDER" && "$keypair_dir" != "$DEFAULT_KEYS_DIR" ]]; then
         process_directory "$keypair_dir"
     fi
-    process_directory "$UNRUGGABLE_FOLDER"
+    process_directory "$DEADBOLT_FOLDER"
     process_directory "$DEFAULT_KEYS_DIR"
 
     echo "Type 'home' to return to the home screen" 
@@ -1901,7 +1991,7 @@ set_custom_rpc() {
         fi
 
         if [[ "$custom_rpc_url" == "https://api.mainnet-beta.solana.com" ]]; then
-            echo "Warning: You will be using the default Solana RPC. It's recommended to use the RPC URL provided by unruggable on boot."
+            echo "Warning: You will be using the default Solana RPC. It's recommended to use the RPC URL provided by deadbolt on boot."
         fi
 
         # Attempt to set the new RPC URL
@@ -1912,7 +2002,7 @@ set_custom_rpc() {
             echo "Custom RPC URL set successfully and verified:"
             echo "$custom_rpc_url"
         else
-            echo "Failed to verify the custom RPC URL. Resetting to unruggable default RPC URL."
+            echo "Failed to verify the custom RPC URL. Resetting to deadbolt default RPC URL."
             # Reset to the fallback RPC URL
             solana config set --url "$fallback_rpc" &> /dev/null
             if [ $? -eq 0 ]; then
@@ -1929,14 +2019,13 @@ set_custom_rpc() {
 
 # Function to show balance
 show_balance() {
-    # Get the current config
-    config_output=$(solana config get)
-
-    # Extract the keypair path
-    keypair_path=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}')
-
-    # Get the wallet address
-    wallet_address=$(solana address -k "$keypair_path")
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        config_output=$(solana config get)
+        keypair_path=$(echo "$config_output" | grep 'Keypair Path' | awk '{print $3}')
+        wallet_address=$(solana address -k "$keypair_path")
+    fi
     echo "Wallet Address: $wallet_address"
 
     # Get the balance
@@ -1997,7 +2086,12 @@ fetch_token_usd_price() {
 
 
 fetch_token_balances() {
-    local wallet_address=$(solana address)
+    local wallet_address
+    if [ $HW_MODE -eq 1 ]; then
+        wallet_address="$HW_ADDRESS"
+    else
+        wallet_address=$(solana address)
+    fi
     local output=$(spl-token accounts --output json-compact --owner "$wallet_address")
     local token_balances=""
     local total_usd=0
@@ -2056,9 +2150,13 @@ draw_ui() {
     clear
     echo "--------------------------------------------------------------------------------"
     echo "|                                                                              |"
-    echo "|                   Welcome to Unruggable                                      |"
+    echo "|                   Welcome to Deadbolt                                      |"
     echo "|                                                                              |"
+    if [ $HW_MODE -eq 1 ]; then
+    echo "|   [HW WALLET]     : $(printf '%-44s' $wallet_address)"
+    else
     echo "|   Connected Wallet : $(printf '%-44s' $wallet_address)"
+    fi
     echo "|                                                                              |"
     printf "|   Balance: %.3f SOL    (%.2f USD) \n" "$balance" "$balance_usd"
     printf "|   Staked SOL: %.3f SOL (%.2f USD) \n" "$total_staked_sol" "$staked_sol_usd"
@@ -2098,6 +2196,11 @@ draw_ui() {
     echo "|   6. Liquid Stake SOL                                                        |"
     echo "|   7. Create New Wallet                                                       |"
     echo "|   8. Set Custom RPC URL                                                      |"
+    if [ $HW_MODE -eq 1 ]; then
+    echo "|   h. Disconnect Hardware Wallet                                              |"
+    else
+    echo "|   h. Connect Hardware Wallet (ESP32)                                         |"
+    fi
     echo "|   9. Exit                                                                    |"
     echo "|                                                                              |"
     echo "|------------------------------------------------------------------------------|"
@@ -2119,6 +2222,7 @@ handle_input() {
         6) liquid_stake_sol ;;
         7) create_new_wallet ;;
         8) set_custom_rpc ;;
+        h|H) toggle_hardware_wallet ;;
         9) exit 0 ;;
         *) echo "Invalid option";;
     esac

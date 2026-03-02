@@ -2,8 +2,11 @@ const web3 = require("@solana/web3.js");
 const axios = require("axios");
 const bs58 = require("bs58");
 const fs = require('fs').promises;
+const hwSigner = require('./hw_signer');
 
 const connection = new web3.Connection("https://mainnet.helius-rpc.com/?api-key=API");
+
+function isHardwarePort(path) { return path.startsWith('/dev/'); }
 
 async function sendTransactionJito(serializedTransaction) {
   const encodedTx = bs58.encode(serializedTransaction);
@@ -29,9 +32,28 @@ async function sendTransactionJito(serializedTransaction) {
 async function createPaymentTx(amountSol, destinationAddress, keypairPath) {
   const lamportsPerSol = web3.LAMPORTS_PER_SOL;
   const amountLamports = amountSol * lamportsPerSol;
-  const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
-  const secretKey = Uint8Array.from(JSON.parse(keypairData));
-  const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+
+  let fromPublicKey, signTransaction, cleanup;
+
+  if (isHardwarePort(keypairPath)) {
+    // Hardware signer mode
+    const signer = await hwSigner.connect(keypairPath);
+    fromPublicKey = new web3.PublicKey(signer.publicKeyBytes);
+    signTransaction = async (tx) => {
+      const msgBytes = tx.message.serialize();
+      const sig = await signer.sign(msgBytes);
+      tx.addSignature(fromPublicKey, sig);
+    };
+    cleanup = () => signer.close();
+  } else {
+    // File-based keypair mode
+    const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
+    const secretKey = Uint8Array.from(JSON.parse(keypairData));
+    const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+    fromPublicKey = fromAccount.publicKey;
+    signTransaction = async (tx) => { tx.sign([fromAccount]); };
+    cleanup = () => {};
+  }
 
   const toAccount = new web3.PublicKey(destinationAddress);
 
@@ -51,31 +73,32 @@ async function createPaymentTx(amountSol, destinationAddress, keypairPath) {
     computePriceIx,
     computeLimitIx,
     web3.SystemProgram.transfer({
-      fromPubkey: fromAccount.publicKey,
+      fromPubkey: fromPublicKey,
       toPubkey: toAccount,
       lamports: amountLamports,
     }),
     web3.SystemProgram.transfer({
-      fromPubkey: fromAccount.publicKey,
-      toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Unruggable tip account
+      fromPubkey: fromPublicKey,
+      toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Deadbolt tip account
       lamports: 420_000, // tip
     }),
     web3.SystemProgram.transfer({
-      fromPubkey: fromAccount.publicKey,
+      fromPubkey: fromPublicKey,
       toPubkey: new web3.PublicKey("DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL"), // Jito tip account
       lamports: 420_000, // tip
     }),
   ];
   const messageV0 = new web3.TransactionMessage({
-    payerKey: fromAccount.publicKey,
+    payerKey: fromPublicKey,
     recentBlockhash: blockhash.blockhash,
     instructions,
   }).compileToV0Message();
 
   const transaction = new web3.VersionedTransaction(messageV0);
-  transaction.sign([fromAccount]);
+  await signTransaction(transaction);
   const rawTransaction = transaction.serialize();
 
+  cleanup();
   const txid = await sendTransactionJito(rawTransaction);
   console.log(`${txid}`);
   return txid;

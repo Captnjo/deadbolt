@@ -3,8 +3,11 @@ const axios = require("axios");
 const bs58 = require("bs58");
 const fs = require('fs').promises;
 const splToken = require("@solana/spl-token");
+const hwSigner = require('./hw_signer');
 
 const connection = new web3.Connection("https://mainnet.helius-rpc.com/?api-key=API");
+
+function isHardwarePort(path) { return path.startsWith('/dev/'); }
 
 async function sendTransactionJito(serializedTransaction) {
   const encodedTx = bs58.encode(serializedTransaction);
@@ -29,9 +32,26 @@ async function sendTransactionJito(serializedTransaction) {
 
 async function createPaymentTx(amountToken, tokenMintAddress, tokenDecimals, destinationAddress, keypairPath) {
   const lamportsPerSol = web3.LAMPORTS_PER_SOL;
-  const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
-  const secretKey = Uint8Array.from(JSON.parse(keypairData));
-  const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+
+  let fromPublicKey, signTransaction, cleanup;
+
+  if (isHardwarePort(keypairPath)) {
+    const signer = await hwSigner.connect(keypairPath);
+    fromPublicKey = new web3.PublicKey(signer.publicKeyBytes);
+    signTransaction = async (tx) => {
+      const msgBytes = tx.message.serialize();
+      const sig = await signer.sign(msgBytes);
+      tx.addSignature(fromPublicKey, sig);
+    };
+    cleanup = () => signer.close();
+  } else {
+    const keypairData = await fs.readFile(keypairPath, { encoding: 'utf8' });
+    const secretKey = Uint8Array.from(JSON.parse(keypairData));
+    const fromAccount = web3.Keypair.fromSecretKey(secretKey);
+    fromPublicKey = fromAccount.publicKey;
+    signTransaction = async (tx) => { tx.sign([fromAccount]); };
+    cleanup = () => {};
+  }
 
   const toAccount = new web3.PublicKey(destinationAddress);
   const blockhash = await connection.getLatestBlockhash();
@@ -59,16 +79,16 @@ async function createPaymentTx(amountToken, tokenMintAddress, tokenDecimals, des
   // SPL Token transfer
   const tokenMint = new web3.PublicKey(tokenMintAddress);
   //Get the associated token accounts for sender and receiver
-  const fromAssociatedTokenAccountPubkey = await splToken.getAssociatedTokenAddress(tokenMint, fromAccount.publicKey);
+  const fromAssociatedTokenAccountPubkey = await splToken.getAssociatedTokenAddress(tokenMint, fromPublicKey);
   const toAssociatedTokenAccountPubkey = await splToken.getAssociatedTokenAddress(tokenMint,toAccount);
-  
+
   // Check if the account already exists
   const accountInfo = await connection.getAccountInfo(toAssociatedTokenAccountPubkey);
   if (!accountInfo) {
     // The account does not exist, so create the instruction to initialize it
     instructions.push(
       splToken.createAssociatedTokenAccountInstruction(
-        fromAccount.publicKey, // Payer of the transaction
+        fromPublicKey, // Payer of the transaction
         toAssociatedTokenAccountPubkey,
         toAccount,
         tokenMint,
@@ -82,7 +102,7 @@ async function createPaymentTx(amountToken, tokenMintAddress, tokenDecimals, des
     splToken.createTransferInstruction(
       fromAssociatedTokenAccountPubkey,
       toAssociatedTokenAccountPubkey,
-      fromAccount.publicKey,
+      fromPublicKey,
       amount,
       [],
       splToken.TOKEN_PROGRAM_ID
@@ -92,44 +112,28 @@ async function createPaymentTx(amountToken, tokenMintAddress, tokenDecimals, des
   // Adding tipping and Jito here
   instructions.push(
     web3.SystemProgram.transfer({
-      fromPubkey: fromAccount.publicKey,
-      toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Unruggable tip account
+      fromPubkey: fromPublicKey,
+      toPubkey: new web3.PublicKey("juLesoSmdTcRtzjCzYzRoHrnF8GhVu6KCV7uxq7nJGp"), // Deadbolt tip account
       lamports: 210_000, // tip
     }),
     web3.SystemProgram.transfer({
-      fromPubkey: fromAccount.publicKey,
+      fromPubkey: fromPublicKey,
       toPubkey: new web3.PublicKey("DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL"), // Jito tip account
       lamports: 210_000, // tip
     }),
   );
 
-  /* const transaction = new web3.Transaction({
-    feePayer: fromAccount.publicKey,
-    recentBlockhash: (await connection.getRecentBlockhash()).blockhash
-  }).add(...instructions);
-  
-  // Sign the transaction with the sender's private key
-  transaction.sign(fromAccount);
-  
-  try {
-    // Send and confirm the transaction
-    const txid = await web3.sendAndConfirmTransaction(connection, transaction, [fromAccount]);
-    console.log(`Transaction ID: ${txid}`);
-    return txid;
-  } catch (error) {
-    console.error('Error sending transaction:', error);
-  } */
-
   const messageV0 = new web3.TransactionMessage({
-    payerKey: fromAccount.publicKey,
+    payerKey: fromPublicKey,
     recentBlockhash: blockhash.blockhash,
     instructions,
   }).compileToV0Message();
 
   const transaction = new web3.VersionedTransaction(messageV0);
-  transaction.sign([fromAccount]);
+  await signTransaction(transaction);
   const rawTransaction = transaction.serialize();
 
+  cleanup();
   const txid = await sendTransactionJito(rawTransaction);
   console.log(`${txid}`);
   return txid;
