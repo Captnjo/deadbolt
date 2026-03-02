@@ -8,8 +8,8 @@ struct SendTokenFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SendTokenViewModel
 
-    init(walletService: WalletService) {
-        _viewModel = StateObject(wrappedValue: SendTokenViewModel(walletService: walletService))
+    init(walletService: WalletService, authService: AuthService) {
+        _viewModel = StateObject(wrappedValue: SendTokenViewModel(walletService: walletService, authService: authService))
     }
 
     var body: some View {

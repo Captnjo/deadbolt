@@ -77,7 +77,6 @@ tokens.txt
 # AI agent/tool configs
 CLAUDE.md
 GEMINI.md
-ARCHITECTURE.md
 SECURITY_RECOMMENDATIONS.md
 .claude/
 .agents/

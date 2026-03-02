@@ -193,6 +193,9 @@ struct CreateWalletView: View {
                 let words = try Mnemonic.generate(wordCount: 12)
                 let keypair = try Mnemonic.importFromPhrase(words: words)
 
+                // Persist mnemonic in Keychain for later retrieval
+                try KeychainManager.storeMnemonic(words, address: keypair.publicKey.base58)
+
                 self.generatedWords = words
                 self.generatedKeypair = keypair
             } catch {
@@ -355,6 +358,10 @@ struct CreateWalletView: View {
 
         do {
             let keypair = try Mnemonic.importFromPhrase(words: words)
+
+            // Persist mnemonic in Keychain for later retrieval
+            try KeychainManager.storeMnemonic(words, address: keypair.publicKey.base58)
+
             self.generatedKeypair = keypair
         } catch {
             errorMessage = error.localizedDescription

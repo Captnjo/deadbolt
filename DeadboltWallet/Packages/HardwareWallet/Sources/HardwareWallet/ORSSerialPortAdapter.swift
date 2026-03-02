@@ -91,13 +91,37 @@ public final class ORSSerialPortAdapter: NSObject, SerialPortProtocol, ORSSerial
         pending?.resume(throwing: HardwareWalletError.connectionFailed("Port closed"))
     }
 
+    /// Send data to the serial port, chunking large payloads to avoid
+    /// overflowing the ESP32-C3's USB-CDC receive buffer.
     public func send(_ data: Data) async throws {
         guard serialPort.isOpen else {
             throw HardwareWalletError.connectionFailed("Port is not open")
         }
-        let success = serialPort.send(data)
-        if !success {
-            throw HardwareWalletError.serialPortError("Failed to send data")
+
+        // Small payloads (ping, pubkey) can be sent in one shot.
+        // Larger payloads (sign command ~400+ bytes) need chunking
+        // to prevent the ESP32's USB-CDC buffer from overflowing.
+        let chunkSize = 64
+        if data.count <= chunkSize {
+            let success = serialPort.send(data)
+            if !success {
+                throw HardwareWalletError.serialPortError("Failed to send data")
+            }
+        } else {
+            var offset = 0
+            while offset < data.count {
+                let end = min(offset + chunkSize, data.count)
+                let chunk = data[offset..<end]
+                let success = serialPort.send(Data(chunk))
+                if !success {
+                    throw HardwareWalletError.serialPortError("Failed to send data chunk at offset \(offset)")
+                }
+                offset = end
+                if offset < data.count {
+                    // Brief pause to let the ESP32 drain its USB-CDC buffer
+                    try await Task.sleep(nanoseconds: 5_000_000) // 5ms
+                }
+            }
         }
     }
 

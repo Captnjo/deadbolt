@@ -8,8 +8,8 @@ struct SwapFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SwapViewModel
 
-    init(walletService: WalletService) {
-        _viewModel = StateObject(wrappedValue: SwapViewModel(walletService: walletService))
+    init(walletService: WalletService, authService: AuthService) {
+        _viewModel = StateObject(wrappedValue: SwapViewModel(walletService: walletService, authService: authService))
     }
 
     var body: some View {
@@ -121,20 +121,49 @@ struct SwapFlowView: View {
 
     private var quoteStep: some View {
         VStack(spacing: 16) {
-            if let quote = viewModel.jupiterQuote {
-                SwapQuoteView(
-                    quote: quote,
-                    inputTokenName: viewModel.inputToken?.name ?? "?",
-                    outputTokenName: viewModel.outputToken?.name ?? "?",
-                    inputDecimals: viewModel.inputToken?.decimals ?? 9,
-                    outputDecimals: viewModel.outputToken?.decimals ?? 9,
-                    isRefreshing: viewModel.isQuoting,
-                    onRefresh: { viewModel.refreshQuote() }
-                )
-            } else if viewModel.isQuoting {
-                Spacer()
-                ProgressView("Getting quote...")
-                Spacer()
+            // Aggregator toggle
+            Picker("Aggregator", selection: Binding(
+                get: { viewModel.aggregator },
+                set: { viewModel.switchAggregator(to: $0) }
+            )) {
+                Text("DFlow").tag(SwapViewModel.SwapAggregator.dflow)
+                Text("Jupiter").tag(SwapViewModel.SwapAggregator.jupiter)
+            }
+            .pickerStyle(.segmented)
+
+            // Quote display
+            switch viewModel.aggregator {
+            case .jupiter:
+                if let quote = viewModel.jupiterQuote {
+                    SwapQuoteView(
+                        quote: quote,
+                        inputTokenName: viewModel.inputToken?.name ?? "?",
+                        outputTokenName: viewModel.outputToken?.name ?? "?",
+                        inputDecimals: viewModel.inputToken?.decimals ?? 9,
+                        outputDecimals: viewModel.outputToken?.decimals ?? 9,
+                        isRefreshing: viewModel.isQuoting,
+                        aggregatorName: "Jupiter",
+                        onRefresh: { viewModel.refreshQuote() }
+                    )
+                } else if viewModel.isQuoting {
+                    Spacer()
+                    ProgressView("Getting quote...")
+                    Spacer()
+                }
+            case .dflow:
+                if viewModel.dflowOrder != nil {
+                    DFlowQuoteView(
+                        inputTokenName: viewModel.inputToken?.name ?? "?",
+                        outputTokenName: viewModel.outputToken?.name ?? "?",
+                        inputAmount: viewModel.amountString,
+                        isRefreshing: viewModel.isQuoting,
+                        onRefresh: { viewModel.refreshQuote() }
+                    )
+                } else if viewModel.isQuoting {
+                    Spacer()
+                    ProgressView("Getting quote...")
+                    Spacer()
+                }
             }
 
             Spacer()
@@ -149,7 +178,7 @@ struct SwapFlowView: View {
                     viewModel.proceedToPreview()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.jupiterQuote == nil)
+                .disabled(!viewModel.hasQuote)
             }
         }
     }
@@ -158,17 +187,30 @@ struct SwapFlowView: View {
 
     private var previewStep: some View {
         VStack(spacing: 20) {
-            if let quote = viewModel.jupiterQuote {
-                let inputAmt = (Double(quote.inAmount) ?? 0) / pow(10.0, Double(viewModel.inputToken?.decimals ?? 9))
-                let outputAmt = (Double(quote.outAmount) ?? 0) / pow(10.0, Double(viewModel.outputToken?.decimals ?? 9))
+            switch viewModel.aggregator {
+            case .jupiter:
+                if let quote = viewModel.jupiterQuote {
+                    let inputAmt = (Double(quote.inAmount) ?? 0) / pow(10.0, Double(viewModel.inputToken?.decimals ?? 9))
+                    let outputAmt = (Double(quote.outAmount) ?? 0) / pow(10.0, Double(viewModel.outputToken?.decimals ?? 9))
 
-                UnifiedTransactionPreviewView(preview: TransactionPreview(
-                    actionDescription: "Swap \(DashboardViewModel.formatTokenAmount(inputAmt)) \(viewModel.inputToken?.name ?? "?") for ~\(DashboardViewModel.formatTokenAmount(outputAmt)) \(viewModel.outputToken?.name ?? "?")",
-                    balanceChanges: [],
-                    feeBreakdown: viewModel.fees ?? TransactionFees(baseFee: 5000, priorityFee: 0, tipAmount: 10000),
-                    simulationStatus: .pending,
-                    warnings: []
-                ))
+                    UnifiedTransactionPreviewView(preview: TransactionPreview(
+                        actionDescription: "Swap \(DashboardViewModel.formatTokenAmount(inputAmt)) \(viewModel.inputToken?.name ?? "?") for ~\(DashboardViewModel.formatTokenAmount(outputAmt)) \(viewModel.outputToken?.name ?? "?") via Jupiter",
+                        balanceChanges: [],
+                        feeBreakdown: viewModel.fees ?? TransactionFees(baseFee: 5000, priorityFee: 0, tipAmount: 10000),
+                        simulationStatus: .pending,
+                        warnings: []
+                    ))
+                }
+            case .dflow:
+                if viewModel.dflowOrder != nil {
+                    UnifiedTransactionPreviewView(preview: TransactionPreview(
+                        actionDescription: "Swap \(viewModel.amountString) \(viewModel.inputToken?.name ?? "?") for \(viewModel.outputToken?.name ?? "?") via DFlow",
+                        balanceChanges: [],
+                        feeBreakdown: viewModel.fees ?? TransactionFees(baseFee: 5000, priorityFee: 0, tipAmount: 0),
+                        simulationStatus: .pending,
+                        warnings: []
+                    ))
+                }
             }
 
             Spacer()

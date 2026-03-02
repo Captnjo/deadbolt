@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import DeadboltCore
-import LocalAuthentication
 #if os(macOS)
 import HardwareWallet
 #endif
@@ -30,14 +29,16 @@ final class SendTokenViewModel: ObservableObject {
     let confirmationTracker: ConfirmationTracker
 
     private let walletService: WalletService
+    private let authService: AuthService
     private let transactionBuilder: TransactionBuilder
     private let rpcClient: SolanaRPCClient
     #if os(macOS)
     private var esp32Bridge: ESP32SerialBridge?
     #endif
 
-    init(walletService: WalletService) {
+    init(walletService: WalletService, authService: AuthService) {
         self.walletService = walletService
+        self.authService = authService
         let rpcURL = AppConfig.defaultRPCURL
         self.rpcClient = SolanaRPCClient(rpcURL: rpcURL)
         self.transactionBuilder = TransactionBuilder(rpcClient: rpcClient)
@@ -117,7 +118,10 @@ final class SendTokenViewModel: ObservableObject {
 
         do {
             if wallet.source != .hardware {
-                try await authenticateUser()
+                guard await authService.authenticate(reason: "Approve token transfer signing") else {
+                    errorMessage = "Authentication required"
+                    return
+                }
             }
 
             let signer = try await loadSigner(for: wallet)
@@ -173,19 +177,6 @@ final class SendTokenViewModel: ObservableObject {
                 simulationStatus = .failed(error: error.localizedDescription)
             }
         }
-    }
-
-    private func authenticateUser() async throws {
-        let context = LAContext()
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            #if DEBUG
-            return // Allow through in debug builds (VMs, CI)
-            #else
-            throw SolanaError.authenticationFailed("Device authentication is required but not configured. Set a password or enable Touch ID in System Settings.")
-            #endif
-        }
-        try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Approve token transfer signing")
     }
 
     private func loadSigner(for wallet: Wallet) async throws -> TransactionSigner {

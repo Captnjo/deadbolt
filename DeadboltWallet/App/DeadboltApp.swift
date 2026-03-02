@@ -10,11 +10,31 @@ import HardwareWallet
 struct DeadboltApp: App {
     @StateObject private var walletService = WalletService()
     @StateObject private var agentService = AgentService()
+    @StateObject private var authService = AuthService()
     #if os(macOS)
     @State private var showBootDetect = true
     @State private var unsecuredKeypairs: [UnsecuredKeypair] = []
     @State private var showKeypairMigration = false
     #endif
+
+    init() {
+        #if os(macOS)
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        if let iconURL = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+           let icon = NSImage(contentsOf: iconURL) {
+            let size = icon.size
+            let radius = size.width * 0.2 // macOS-style corner radius
+            let rounded = NSImage(size: size, flipped: false) { rect in
+                let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+                path.addClip()
+                icon.draw(in: rect)
+                return true
+            }
+            NSApplication.shared.applicationIconImage = rounded
+        }
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -37,6 +57,14 @@ struct DeadboltApp: App {
                 AddressBookView()
                     .tabItem { Label("Address Book", systemImage: "person.crop.rectangle.stack") }
             }
+            .environmentObject(authService)
+            .sheet(isPresented: $authService.showPasswordEntry) {
+                PasswordEntryView()
+                    .environmentObject(authService)
+            }
+            .task {
+                await authService.loadFromConfig()
+            }
             .task {
                 let migrationService = MigrationService()
                 await migrationService.migrateIfNeeded()
@@ -50,8 +78,6 @@ struct DeadboltApp: App {
                         .environmentObject(walletService)
                 }
                 .navigationSplitViewStyle(.balanced)
-                .opacity(showBootDetect ? 0.3 : 1.0)
-                .disabled(showBootDetect)
 
                 if showBootDetect {
                     HardwareWalletBootView(isPresented: $showBootDetect)
@@ -69,8 +95,14 @@ struct DeadboltApp: App {
                     AgentSigningPromptView(request: request)
                         .environmentObject(agentService)
                         .environmentObject(walletService)
+                        .environmentObject(authService)
                         .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
+            }
+            .environmentObject(authService)
+            .sheet(isPresented: $authService.showPasswordEntry) {
+                PasswordEntryView()
+                    .environmentObject(authService)
             }
             .animation(.easeInOut(duration: 0.3), value: showBootDetect)
             .animation(.easeInOut(duration: 0.3), value: agentService.currentRequest?.id)
@@ -83,6 +115,9 @@ struct DeadboltApp: App {
                     unsecuredKeypairs = found
                     showKeypairMigration = true
                 }
+            }
+            .task {
+                await authService.loadFromConfig()
             }
             .task {
                 agentService.walletService = walletService
@@ -137,6 +172,7 @@ struct DeadboltApp: App {
             NavigationLink {
                 DashboardView()
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             } label: {
                 Label("Dashboard", systemImage: "house")
             }
@@ -156,6 +192,7 @@ struct DeadboltApp: App {
             NavigationLink {
                 WalletListView()
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             } label: {
                 Label("Wallets", systemImage: "wallet.pass")
             }
@@ -183,6 +220,7 @@ struct DeadboltApp: App {
             NavigationLink {
                 AgentAPIView()
                     .environmentObject(agentService)
+                    .environmentObject(authService)
             } label: {
                 Label("Agent API", systemImage: "antenna.radiowaves.left.and.right")
             }
@@ -192,6 +230,7 @@ struct DeadboltApp: App {
             NavigationLink {
                 SettingsView()
                     .environmentObject(walletService)
+                    .environmentObject(authService)
             } label: {
                 Label("Settings", systemImage: "gear")
             }

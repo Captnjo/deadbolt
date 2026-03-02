@@ -1,6 +1,5 @@
 import SwiftUI
 import DeadboltCore
-import LocalAuthentication
 #if os(macOS)
 import HardwareWallet
 #endif
@@ -10,6 +9,7 @@ struct AgentSigningPromptView: View {
     let request: AgentRequest
     @EnvironmentObject var agentService: AgentService
     @EnvironmentObject var walletService: WalletService
+    @EnvironmentObject var authService: AuthService
 
     @State private var isProcessing = false
     @State private var statusMessage = ""
@@ -384,9 +384,14 @@ struct AgentSigningPromptView: View {
         }
 
         do {
-            // Require biometric/password auth for hot wallets (hardware wallets use physical button)
+            // Require auth for hot wallets (hardware wallets use physical button)
             if wallet.source != .hardware {
-                try await authenticateUser()
+                guard await authService.authenticate(reason: "Approve agent transaction signing") else {
+                    resultError = "Authentication required"
+                    showResult = true
+                    isProcessing = false
+                    return
+                }
             }
 
             // Create signer
@@ -459,22 +464,6 @@ struct AgentSigningPromptView: View {
 
     private func reject() async {
         await agentService.rejectRequest(request.id)
-    }
-
-    private func authenticateUser() async throws {
-        let context = LAContext()
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            #if DEBUG
-            return // Allow through in debug builds (VMs, CI)
-            #else
-            throw SolanaError.authenticationFailed("Device authentication is required but not configured. Set a password or enable Touch ID in System Settings.")
-            #endif
-        }
-        try await context.evaluatePolicy(
-            .deviceOwnerAuthentication,
-            localizedReason: "Approve agent transaction signing"
-        )
     }
 
     private func createSigner(for wallet: Wallet) async throws -> TransactionSigner {

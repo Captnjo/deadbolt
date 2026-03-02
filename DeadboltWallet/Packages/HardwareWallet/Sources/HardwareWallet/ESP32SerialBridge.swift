@@ -72,6 +72,11 @@ public actor ESP32SerialBridge: @preconcurrency TransactionSigner {
     /// Thread-safe storage for the public key, accessible from nonisolated context.
     private let _publicKeyStorage = PublicKeyStorage()
 
+    /// Optional callback invoked when the device enters "awaiting confirmation" state
+    /// (the user must press the physical BOOT button). Set at init time so it can be
+    /// read from the actor without isolation.
+    public nonisolated let onAwaitingConfirmation: (@Sendable () -> Void)?
+
     /// The public key of the connected ESP32 hardware wallet.
     /// Fetched from the device on first access and cached.
     /// Callers should call `connect()` or `getPublicKey()` before reading this.
@@ -82,9 +87,12 @@ public actor ESP32SerialBridge: @preconcurrency TransactionSigner {
     // MARK: - Init
 
     /// Create a bridge using a serial port abstraction.
-    /// - Parameter port: A `SerialPortProtocol` implementation (real or mock).
-    public init(port: SerialPortProtocol) {
+    /// - Parameters:
+    ///   - port: A `SerialPortProtocol` implementation (real or mock).
+    ///   - onAwaitingConfirmation: Called when the device is ready for the user to press the BOOT button.
+    public init(port: SerialPortProtocol, onAwaitingConfirmation: (@Sendable () -> Void)? = nil) {
         self.port = port
+        self.onAwaitingConfirmation = onAwaitingConfirmation
     }
 
     // MARK: - Connection
@@ -167,7 +175,10 @@ public actor ESP32SerialBridge: @preconcurrency TransactionSigner {
 
         // Expect a pending response first
         if pendingResponse.status == "pending" {
-            // Now wait for the user to press the button (up to 30 seconds)
+            // Notify caller that the device is ready for button press
+            onAwaitingConfirmation?()
+
+            // Now wait for the user to press the button
             let finalResponse = try await receiveResponse(timeout: Self.signTimeout)
 
             if finalResponse.status == "signed" {

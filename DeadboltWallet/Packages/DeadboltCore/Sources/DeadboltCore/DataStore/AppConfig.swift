@@ -23,24 +23,51 @@ public enum SolanaNetwork: String, Codable, CaseIterable, Sendable {
     }
 }
 
+// MARK: - API Key
+
+public struct APIKey: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public var label: String
+    public let token: String
+
+    public init(id: String = UUID().uuidString, label: String, token: String) {
+        self.id = id
+        self.label = label
+        self.token = token
+    }
+}
+
 // MARK: - P8-014: App Config Persistence
 
 public actor AppConfig {
     // MARK: - Static Defaults (accessible synchronously from ViewModels)
 
-    /// Helius API key loaded from environment variable DEADBOLT_HELIUS_API_KEY,
-    /// or from the persisted config. Never hardcoded in source.
-    public static var defaultHeliusAPIKey: String {
+    /// Helius API key: runtime override > environment variable > placeholder.
+    /// Set via `AppConfig.defaultHeliusAPIKey = "..."` after loading from persisted config.
+    public static var defaultHeliusAPIKey: String = {
         if let envKey = ProcessInfo.processInfo.environment["DEADBOLT_HELIUS_API_KEY"], !envKey.isEmpty {
             return envKey
         }
-        #if DEBUG
-        // In debug builds, fall back to a placeholder that will produce clear errors
         return "MISSING_HELIUS_API_KEY"
-        #else
-        return "MISSING_HELIUS_API_KEY"
-        #endif
-    }
+    }()
+    /// Jupiter API key: runtime override > environment variable > empty.
+    /// Generate a free key at https://portal.jup.ag
+    public static var defaultJupiterAPIKey: String = {
+        if let envKey = ProcessInfo.processInfo.environment["DEADBOLT_JUPITER_API_KEY"], !envKey.isEmpty {
+            return envKey
+        }
+        return ""
+    }()
+    /// DFlow API key: runtime override > environment variable > empty.
+    /// Generate a key at https://pond.dflow.net/build/api-key
+    public static var defaultDFlowAPIKey: String = {
+        if let envKey = ProcessInfo.processInfo.environment["DEADBOLT_DFLOW_API_KEY"], !envKey.isEmpty {
+            return envKey
+        }
+        return ""
+    }()
+    /// Preferred swap aggregator: "dflow" (default) or "jupiter".
+    public static var defaultPreferredSwapAggregator: String = "dflow"
     public static var defaultNetwork: SolanaNetwork = .mainnet
     public static var defaultRPCURL: URL {
         defaultNetwork.rpcURL(heliusAPIKey: defaultHeliusAPIKey)
@@ -50,9 +77,15 @@ public actor AppConfig {
     public private(set) var network: SolanaNetwork
     public private(set) var activeWalletAddress: String?
     public private(set) var jitoEnabled: Bool
-    public private(set) var apiToken: String?
+    public private(set) var apiTokens: [APIKey]
     public private(set) var heliusAPIKey: String?
+    public private(set) var jupiterAPIKey: String?
+    public private(set) var dflowAPIKey: String?
+    public private(set) var preferredSwapAggregator: String
     public private(set) var guardrails: GuardrailsConfig
+    public private(set) var authMode: String
+    public private(set) var allowBiometricBypass: Bool
+    public private(set) var walletNames: [String: String]
 
     private let filePath: String
 
@@ -68,9 +101,15 @@ public actor AppConfig {
         self.rpcURL = SolanaNetwork.mainnet.rpcURL(heliusAPIKey: AppConfig.defaultHeliusAPIKey).absoluteString
         self.activeWalletAddress = nil
         self.jitoEnabled = true
-        self.apiToken = nil
+        self.apiTokens = []
         self.heliusAPIKey = nil
+        self.jupiterAPIKey = nil
+        self.dflowAPIKey = nil
+        self.preferredSwapAggregator = "dflow"
         self.guardrails = GuardrailsConfig()
+        self.authMode = "system"
+        self.allowBiometricBypass = true
+        self.walletNames = [:]
     }
 
     // MARK: - Persistence
@@ -86,9 +125,22 @@ public actor AppConfig {
         network = stored.network ?? .mainnet
         activeWalletAddress = stored.activeWalletAddress
         jitoEnabled = stored.jitoEnabled
-        apiToken = stored.apiToken
+        // Migrate old single apiToken → apiTokens array
+        if let tokens = stored.apiTokens, !tokens.isEmpty {
+            apiTokens = tokens
+        } else if let legacy = stored.apiToken, !legacy.isEmpty {
+            apiTokens = [APIKey(label: "Default", token: legacy)]
+        } else {
+            apiTokens = []
+        }
         heliusAPIKey = stored.heliusAPIKey
+        jupiterAPIKey = stored.jupiterAPIKey
+        dflowAPIKey = stored.dflowAPIKey
+        preferredSwapAggregator = stored.preferredSwapAggregator ?? "dflow"
         guardrails = stored.guardrails ?? GuardrailsConfig()
+        authMode = stored.authMode ?? "system"
+        allowBiometricBypass = stored.allowBiometricBypass ?? true
+        walletNames = stored.walletNames ?? [:]
     }
 
     /// Save current configuration to disk. Creates parent directories if needed.
@@ -101,9 +153,16 @@ public actor AppConfig {
             network: network,
             activeWalletAddress: activeWalletAddress,
             jitoEnabled: jitoEnabled,
-            apiToken: apiToken,
+            apiToken: nil,
+            apiTokens: apiTokens,
             heliusAPIKey: heliusAPIKey,
-            guardrails: guardrails
+            jupiterAPIKey: jupiterAPIKey,
+            dflowAPIKey: dflowAPIKey,
+            preferredSwapAggregator: preferredSwapAggregator,
+            guardrails: guardrails,
+            authMode: authMode,
+            allowBiometricBypass: allowBiometricBypass,
+            walletNames: walletNames
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -136,6 +195,21 @@ public actor AppConfig {
         self.heliusAPIKey = heliusAPIKey
     }
 
+    /// Update the Jupiter API key.
+    public func update(jupiterAPIKey: String?) {
+        self.jupiterAPIKey = jupiterAPIKey
+    }
+
+    /// Update the DFlow API key.
+    public func update(dflowAPIKey: String?) {
+        self.dflowAPIKey = dflowAPIKey
+    }
+
+    /// Update the preferred swap aggregator ("dflow" or "jupiter").
+    public func update(preferredSwapAggregator: String) {
+        self.preferredSwapAggregator = preferredSwapAggregator
+    }
+
     /// Update the RPC URL. Enforces HTTPS unless targeting localhost.
     public func update(rpcURL: String) {
         // Allow http:// for localhost/127.0.0.1 (development), enforce HTTPS for everything else
@@ -161,47 +235,63 @@ public actor AppConfig {
         self.jitoEnabled = jitoEnabled
     }
 
-    /// Update API token.
-    public func update(apiToken: String?) {
-        self.apiToken = apiToken
-    }
-
-    /// Generate a new API token (db_ prefix + 32 hex chars).
-    public func generateAPIToken() -> String {
+    /// Generate a new API key with the given label. Appends to the array and returns it.
+    @discardableResult
+    public func generateAPIToken(label: String) -> APIKey {
         var bytes = [UInt8](repeating: 0, count: 16)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         let hex = bytes.map { String(format: "%02x", $0) }.joined()
-        let token = "db_\(hex)"
-        self.apiToken = token
-        return token
+        let key = APIKey(label: label, token: "db_\(hex)")
+        apiTokens.append(key)
+        return key
     }
 
-    /// Validate a bearer token against the stored API token.
-    /// Uses constant-time HMAC-based equality to prevent timing side-channel attacks
-    /// (including length oracle: tokens are always "db_" + 32 hex chars = 35 bytes).
+    /// Remove an API key by its id.
+    public func removeAPIToken(id: String) {
+        apiTokens.removeAll { $0.id == id }
+    }
+
+    /// Validate a bearer token against all stored API keys.
+    /// Uses constant-time comparison on every key to prevent timing side-channel attacks.
     public func validateToken(_ token: String) -> Bool {
-        guard let stored = apiToken, !stored.isEmpty else { return false }
-        // All valid tokens are exactly 35 bytes ("db_" + 32 hex chars).
-        // Pad both to a fixed length to eliminate length oracle.
+        guard !apiTokens.isEmpty else { return false }
         let fixedLen = 64
         let a = Array(token.utf8) + Array(repeating: UInt8(0), count: max(0, fixedLen - token.utf8.count))
-        let b = Array(stored.utf8) + Array(repeating: UInt8(0), count: max(0, fixedLen - stored.utf8.count))
-
-        // Length mismatch is still a rejection but we do it after constant-time XOR
-        var result: UInt8 = 0
-        for i in 0..<fixedLen {
-            result |= a[i] ^ b[i]
+        var anyMatch = false
+        for key in apiTokens {
+            let b = Array(key.token.utf8) + Array(repeating: UInt8(0), count: max(0, fixedLen - key.token.utf8.count))
+            var result: UInt8 = 0
+            for i in 0..<fixedLen {
+                result |= a[i] ^ b[i]
+            }
+            if token.utf8.count != key.token.utf8.count {
+                result |= 1
+            }
+            if result == 0 {
+                anyMatch = true
+            }
         }
-        // Also reject if input length doesn't match stored length
-        if token.utf8.count != stored.utf8.count {
-            result |= 1
-        }
-        return result == 0
+        return anyMatch
     }
 
     /// Update guardrails config.
     public func update(guardrails: GuardrailsConfig) {
         self.guardrails = guardrails
+    }
+
+    /// Update auth mode ("system", "appPassword", "biometricOnly").
+    public func update(authMode: String) {
+        self.authMode = authMode
+    }
+
+    /// Update biometric bypass preference.
+    public func update(allowBiometricBypass: Bool) {
+        self.allowBiometricBypass = allowBiometricBypass
+    }
+
+    /// Update a custom wallet name for an address.
+    public func update(walletName: String, forAddress address: String) {
+        self.walletNames[address] = walletName
     }
 }
 
@@ -212,7 +302,14 @@ private struct StoredConfig: Codable {
     let network: SolanaNetwork?
     let activeWalletAddress: String?
     let jitoEnabled: Bool
-    let apiToken: String?
+    let apiToken: String?        // Legacy single token (read-only for migration)
+    let apiTokens: [APIKey]?     // Multi-key storage
     let heliusAPIKey: String?
+    let jupiterAPIKey: String?
+    let dflowAPIKey: String?
+    let preferredSwapAggregator: String?
     let guardrails: GuardrailsConfig?
+    let authMode: String?
+    let allowBiometricBypass: Bool?
+    let walletNames: [String: String]?
 }

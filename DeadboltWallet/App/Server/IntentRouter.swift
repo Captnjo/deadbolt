@@ -26,7 +26,7 @@ actor IntentRouter {
     init(rpcClient: SolanaRPCClient, walletService: WalletService) {
         self.rpcClient = rpcClient
         self.txBuilder = TransactionBuilder(rpcClient: rpcClient)
-        self.jupiterClient = JupiterClient()
+        self.jupiterClient = JupiterClient(apiKey: AppConfig.defaultJupiterAPIKey)
         self.walletService = walletService
     }
 
