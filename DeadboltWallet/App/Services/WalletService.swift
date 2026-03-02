@@ -48,9 +48,11 @@ final class WalletService: ObservableObject {
 
         // Keychain-stored wallets (only if user explicitly created/imported them)
         if let addresses = try? KeychainManager.listStoredAddresses() {
-            for addr in addresses {
+            for (index, addr) in addresses.enumerated() {
                 if let pubKey = try? SolanaPublicKey(base58: addr) {
-                    discovered.append(Wallet(publicKey: pubKey, name: "Hot Wallet", source: .keychain))
+                    let number = index + 1
+                    let name = addresses.count == 1 ? "Hot Wallet" : "Hot Wallet #\(number)"
+                    discovered.append(Wallet(publicKey: pubKey, name: name, source: .keychain))
                 }
             }
         }
@@ -79,6 +81,29 @@ final class WalletService: ObservableObject {
         self.wallets = discovered
         if activeWallet == nil {
             activeWallet = discovered.first
+        }
+
+        // Auto-sync wallets to the address book so they appear as recipients
+        syncWalletsToAddressBook(discovered)
+    }
+
+    /// Add any wallets not already in the address book, using their display name as the tag.
+    private func syncWalletsToAddressBook(_ wallets: [Wallet]) {
+        Task {
+            let addressBook = AddressBook()
+            try? await addressBook.load()
+            let existing = await addressBook.entries()
+            let existingAddresses = Set(existing.map(\.address))
+
+            var changed = false
+            for wallet in wallets {
+                guard !existingAddresses.contains(wallet.address) else { continue }
+                try? await addressBook.add(address: wallet.address, tag: wallet.name)
+                changed = true
+            }
+            if changed {
+                try? await addressBook.save()
+            }
         }
     }
 
