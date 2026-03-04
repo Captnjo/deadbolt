@@ -67,6 +67,19 @@ firmware/**/.pio/
 *.swp
 *.swo
 *~
+*.iml
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.packages
+build/
+pubspec.lock
+
+# Rust
+rust/target/
 
 # Project-specific
 nftdata/
@@ -85,6 +98,12 @@ SECURITY_RECOMMENDATIONS.md
 id-*.json
 keypair*.json
 *.secret
+*.seed
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Tracker (internal dev state)
 tracker.md
