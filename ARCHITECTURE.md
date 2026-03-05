@@ -6,7 +6,7 @@
 
 ## What Is Deadbolt?
 
-A native macOS wallet for Solana that doubles as a **signing gateway for AI agents**. Agents propose DeFi transactions via REST API, the user previews and approves them, and the app signs with either a hot wallet (CryptoKit) or a $5 ESP32 hardware signer. The agent never touches the keys.
+A cross-platform wallet for Solana that doubles as a **signing gateway for AI agents**. Built with Flutter (UI) and Rust (crypto, signing, transaction building). Agents propose DeFi transactions via REST API, the user previews and approves them, and the app signs with either a software wallet (Rust vault) or a $5 ESP32 hardware signer. The agent never touches the keys.
 
 ---
 
@@ -21,14 +21,14 @@ A native macOS wallet for Solana that doubles as a **signing gateway for AI agen
              ▼                          ▼
 ┌────────────────────────┐   ┌──────────────────────────┐
 │  Embedded HTTP Server  │   │  Bridge Service (Python)  │
-│  Hummingbird, in-app   │   │  FastAPI, port 9877       │
+│  axum, in-app (Rust)   │   │  FastAPI, port 9877       │
 │  Port 9876             │   │  Forwards to localhost    │
 └───────────┬────────────┘   └────────────┬─────────────┘
             │                             │
             └──────────┬──────────────────┘
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Deadbolt Swift App                      │
+│              Flutter UI + Rust Core                      │
 │                                                         │
 │  ┌──────────┐  ┌────────────┐  ┌──────────────────────┐│
 │  │ Guardrails│→│  Request    │→│  Signing Prompt (UI)  ││
@@ -37,8 +37,8 @@ A native macOS wallet for Solana that doubles as a **signing gateway for AI agen
 │                                            │            │
 │                                 ┌──────────┴─────────┐  │
 │                                 │                    │  │
-│                          Hot Wallet            ESP32  │  │
-│                          (CryptoKit)        (Serial)  │  │
+│                          Software            ESP32   │  │
+│                          (Rust vault)      (Serial)  │  │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -47,120 +47,43 @@ A native macOS wallet for Solana that doubles as a **signing gateway for AI agen
 ## Project Structure
 
 ```
-DeadboltWallet/
-├── App/
-│   ├── DeadboltApp.swift              # @main entry, navigation, overlay modals
-│   ├── Server/
-│   │   ├── IntentServer.swift           # Hummingbird HTTP server (actor)
-│   │   ├── IntentRouter.swift           # Maps intents → TransactionBuilder calls
-│   │   ├── IntentTypes.swift            # Request/response JSON models
-│   │   ├── RequestQueue.swift           # FIFO queue with AsyncStream subscription
-│   │   ├── AuthMiddleware.swift         # Bearer token validation
-│   │   └── WalletStateProvider.swift    # Adapts WalletService for server actor
-│   ├── Services/
-│   │   ├── AgentService.swift           # Server lifecycle, token management
-│   │   ├── WalletService.swift          # Wallet list, balances, network, settings
-│   │   ├── AuthService.swift            # Biometric/password authentication
-│   │   ├── PriceService.swift           # CoinGecko + Jupiter price feeds
-│   │   ├── GuardrailsEngine.swift       # Safety rule evaluation (actor)
-│   │   ├── MigrationService.swift       # One-time CLI data import
-│   │   └── ConfirmationTracker.swift    # Poll tx confirmation status
-│   ├── ViewModels/
-│   │   ├── SendViewModel.swift          # SOL transfer flow
-│   │   ├── SendTokenViewModel.swift     # SPL token transfer flow
-│   │   ├── SwapViewModel.swift          # Jupiter swap flow
-│   │   ├── StakeViewModel.swift         # Sanctum staking flow
-│   │   ├── DashboardViewModel.swift     # Portfolio overview
-│   │   └── HistoryViewModel.swift       # Transaction history
-│   └── Views/
-│       ├── Agent/
-│       │   ├── AgentSigningPromptView.swift  # Modal for agent intent approval
-│       │   └── AgentAPIView.swift            # API token management UI
-│       ├── Dashboard/DashboardView.swift
-│       ├── Send/SendFlowView.swift
-│       ├── Swap/SwapFlowView.swift
-│       ├── Stake/StakeFlowView.swift
-│       ├── Settings/
-│       │   ├── SettingsView.swift
-│       │   └── GuardrailsSettingsView.swift
-│       └── ...
-│
-├── Packages/
-│   ├── DeadboltCore/                  # Platform-agnostic Swift library
-│   │   └── Sources/DeadboltCore/
-│   │       ├── Crypto/
-│   │       │   ├── Ed25519Signer.swift      # TransactionSigner protocol + SoftwareSigner
-│   │       │   ├── KeychainManager.swift    # macOS/iOS Keychain access
-│   │       │   ├── KeypairReader.swift      # Discover keypair JSON files
-│   │       │   ├── Base58.swift             # Base58 encode/decode
-│   │       │   └── Mnemonic.swift           # BIP39 seed generation
-│   │       ├── Solana/
-│   │       │   ├── TransactionBuilder.swift # Build, sign, simulate, submit
-│   │       │   ├── SolanaRPCClient.swift    # JSON-RPC via Helius
-│   │       │   ├── Transaction.swift        # Legacy transaction
-│   │       │   ├── VersionedTransaction.swift # v0 with address lookup tables
-│   │       │   ├── SystemProgram.swift      # SOL transfers
-│   │       │   ├── TokenProgram.swift       # SPL token ops
-│   │       │   ├── ComputeBudgetProgram.swift
-│   │       │   └── JitoTip.swift            # MEV tip instructions
-│   │       ├── Network/
-│   │       │   ├── JupiterClient.swift      # Swap quotes & instructions
-│   │       │   ├── DFlowClient.swift        # DFlow swap orders (pre-built txs)
-│   │       │   ├── SanctumClient.swift      # Liquid staking
-│   │       │   ├── JitoClient.swift         # Bundle submission
-│   │       │   ├── HeliusClient.swift       # Enhanced tx history
-│   │       │   └── HTTPClient.swift         # Generic HTTP/JSON-RPC
-│   │       ├── Models/
-│   │       │   ├── Wallet.swift             # Wallet + WalletSource enum
-│   │       │   ├── SolanaPublicKey.swift    # 32-byte key with Base58
-│   │       │   ├── Token.swift              # TokenDefinition, TokenBalance
-│   │       │   ├── DFlowTypes.swift         # DFlow API response models
-│   │       │   └── SolanaError.swift
-│   │       └── DataStore/
-│   │           ├── AppConfig.swift          # Persisted settings (~/.deadbolt/config.json)
-│   │           ├── GuardrailsConfig.swift   # Safety rule thresholds
-│   │           ├── AddressBook.swift        # Saved addresses
-│   │           └── DeadboltDirectories.swift  # Platform-specific paths
-│   │
-│   └── HardwareWallet/                  # macOS-only, ESP32 integration
-│       └── Sources/HardwareWallet/
-│           ├── ESP32SerialBridge.swift   # Actor, conforms to TransactionSigner
-│           ├── ESP32Detector.swift       # USB serial port discovery
-│           ├── ORSSerialPortAdapter.swift # ORSSerialPort wrapper
-│           └── SerialPortProtocol.swift  # Abstraction for testing
-│
-├── bridge/                              # Python FastAPI proxy for remote agents
-│   └── bridge/
-│       ├── main.py                      # App creation + CLI entry point
-│       ├── routes.py                    # Forward all endpoints to Swift app
-│       ├── auth.py                      # Bearer token validation
-│       ├── config.py                    # Load from ~/.deadbolt/config.json
-│       ├── ws_client.py                 # StatusPoller (long-poll subscribe)
-│       └── protocol.py                  # Protocol constants + docs
-│
-├── openclaw-plugin/                     # OpenClaw agent skill
-│   ├── SKILL.md                         # Skill definition (YAML frontmatter)
-│   ├── scripts/wallet.py               # CLI wrapper for all API operations
-│   └── _meta.json                       # ClawHub registry metadata
-│
-├── firmware/                            # ESP32-C3 Arduino firmware
-│   └── unruggable_esp32/
-│       └── unruggable_esp32.ino       # Ed25519 keygen, signing, serial protocol
-│
-├── calypso/                             # Legacy Node.js reference code
-│   ├── calypso.js                       # Jupiter swaps + Jito (reference)
-│   ├── hermes.js                        # SOL transfers + Jito (reference)
-│   ├── hermesSpl.js                     # SPL transfers + Jito (reference)
-│   └── hw_signer.js                     # ESP32 serial protocol (Node.js version)
-│
-├── tests/
-│   └── test_intent_api.sh              # 21-assertion integration test suite
-│
-├── content/
-│   ├── launch-thread.md                 # X launch copy
-│   └── logo-prompt.md                   # Logo generation prompt
-│
-└── spec.md                              # Full product specification
+rust/
+  deadbolt_core/src/
+    crypto/              # base58, pubkey, signer, mnemonic, vault
+    solana/              # transaction builder, message serialization, PDAs
+      programs/          # system, token, compute_budget, jito_tip
+    storage/             # SecureStorage trait + platform backends
+    hardware/            # ESP32 detector + serial bridge
+    agent/               # axum server + guardrails
+    models/              # error types, wallet types
+  deadbolt_bridge/       # flutter_rust_bridge FFI layer
+
+lib/                     # Flutter/Dart
+  main.dart
+  app.dart               # MaterialApp, theme, routing, title bar
+  theme/brand_theme.dart # Brand colors + ThemeData
+  routing/app_router.dart # GoRouter (sidebar desktop, tabs mobile)
+  providers/             # Riverpod notifiers (wallet, balance, network, send, swap, etc.)
+  models/                # Dart data classes (token, send, stake, transaction_history)
+  services/              # HTTP clients (RPC, Helius, Jupiter, DFlow, Jito, price)
+  features/
+    dashboard/           # Portfolio view (SOL + token balances, NFTs, USD values)
+    send/                # Send SOL/token flow
+    swap/                # Jupiter/DFlow swap flow
+    receive/             # QR code + address copy
+    nft/                 # Send NFT flow
+    history/             # Transaction history (Helius Enhanced API)
+    address_book/        # Contact management (CRUD + search)
+    wallet/              # Wallet management (create, import, hardware)
+    settings/            # Network, API keys, preferences
+    onboarding/          # First-run wizard
+  shared/                # App shell, title bar, wallet drawer, formatters, widgets
+
+DeadboltWallet/          # Legacy Swift macOS app (superseded by Flutter)
+firmware/                # ESP32 Arduino firmware for hardware signing
+bridge/                  # Python FastAPI service for remote agent access
+calypso/                 # Legacy Node.js transaction modules
+content/                 # Brand guidelines
 ```
 
 ---
@@ -169,29 +92,28 @@ DeadboltWallet/
 
 ### TransactionSigner
 
-The central abstraction. Both signing modes implement the same 2-method protocol:
+The central abstraction. Both signing modes implement the same trait in Rust:
 
-```swift
-public protocol TransactionSigner: Sendable {
-    var publicKey: SolanaPublicKey { get }
-    func sign(message: Data) async throws -> Data
+```rust
+pub trait TransactionSigner: Send + Sync {
+    fn public_key(&self) -> &SolanaPublicKey;
+    fn sign(&self, message: &[u8]) -> Result<[u8; 64]>;
 }
 ```
 
 | Implementation | Where keys live | How user approves |
 |---|---|---|
-| `SoftwareSigner` | macOS Keychain or keypair file | Click "Approve" in app |
+| `SoftwareSigner` | Encrypted vault (ChaCha20-Poly1305) | Click "Approve" in app |
 | `ESP32SerialBridge` | ESP32 flash memory | Press BOOT button on device |
 
 The agent never sees either. It only gets back a `request_id` to poll.
 
 ### WalletSource
 
-```swift
+```rust
 enum WalletSource {
-    case keychain          // Hot wallet — seed in macOS Keychain
-    case keypairFile(path) // Hot wallet — JSON file on disk
-    case hardware          // Cold wallet — ESP32 via USB serial
+    Software,    // Hot wallet — seed in encrypted vault
+    Hardware,    // Cold wallet — ESP32 via USB serial
 }
 ```
 
@@ -301,15 +223,15 @@ App                      ESP32SerialBridge            ESP32 Device
 ### 3. Manual Send Flow (no agent)
 
 ```
-User → SendFlowView
-  Step 1: Pick recipient (address book or paste)
-  Step 2: Enter amount
+User → SendScreen
+  Step 1: Pick recipient (address book dropdown or paste address)
+  Step 2: Select asset (SOL or SPL token) + enter amount
   Step 3: Preview (simulate tx, show fees + balance changes)
-  Step 4: Approve → loadSigner → buildSendSOL → submitViaJito
-  Step 5: ConfirmationTracker polls until finalized
+  Step 4: Approve → loadSigner → build tx → submit via Jito (mainnet) or RPC
+  Step 5: Confirmation polling until finalized
 ```
 
-Swap and Stake flows follow the same pattern with different builders.
+Swap flow follows the same pattern with Jupiter/DFlow builders.
 
 ### 4. Swap Aggregator Toggle
 
@@ -356,8 +278,7 @@ The preference persists in `~/.deadbolt/config.json` as `preferredSwapAggregator
 |------|--------|-------------|
 | `send_sol` | `recipient`, `amount` (lamports) | Transfer SOL |
 | `send_token` | `recipient`, `mint`, `amount`, `decimals?` | Transfer SPL token |
-| `swap` | `input_mint`, `output_mint`, `amount`, `slippage_bps?` | Jupiter swap |
-| `stake` | `lst_mint`, `amount` | Sanctum liquid staking |
+| `swap` | `input_mint`, `output_mint`, `amount`, `slippage_bps?` | Jupiter/DFlow swap |
 | `sign_message` | `message` | Sign arbitrary message |
 | `create_wallet` | `source?`, `name?` | Generate new keypair |
 | `batch` | `intents[]` | Multiple intents atomically |
@@ -395,7 +316,6 @@ Configurable safety rules evaluated *before* an intent reaches the signing promp
 | Helius RPC | Solana JSON-RPC, enhanced tx history | `SolanaRPCClient`, `HeliusClient` |
 | Jupiter v6 | Swap quotes + instructions | `JupiterClient` |
 | DFlow | Swap quotes (returns pre-built tx) | `DFlowClient` |
-| Sanctum | Liquid staking quotes + txs | `SanctumClient` |
 | Jito Block Engine | MEV-protected bundle submission (mainnet only) | `JitoClient` |
 | CoinGecko | SOL/USD price | `PriceService` |
 
@@ -419,7 +339,7 @@ All settings changed in the Settings UI persist to `~/.deadbolt/config.json` and
 For agents that can't reach `localhost:9876` (cloud-hosted, different machine):
 
 ```
-Cloud Agent → Bridge (FastAPI, port 9877) → localhost:9876 (Swift app)
+Cloud Agent → Bridge (FastAPI, port 9877) → localhost:9876 (Deadbolt app)
 ```
 
 The bridge is a transparent HTTP proxy. Same auth token, same endpoints. Keys never leave the user's machine. The bridge forwards requests and polls status on behalf of remote agents.
@@ -432,16 +352,17 @@ The bridge is a transparent HTTP proxy. Same auth token, same endpoints. Keys ne
 ## Build & Run
 
 ```bash
-# Swift app (macOS)
-cd DeadboltWallet && swift build
+# Flutter app (macOS)
+flutter pub get
+flutter run -d macos
 
-# Unit tests
-swift test --package-path Packages/DeadboltCore
+# Release build
+flutter build macos
 
-# Integration tests (app must be running)
-./tests/test_intent_api.sh
+# Rust core tests
+cd rust/deadbolt_core && cargo test
 
-# Bridge
+# Bridge (remote agents)
 cd bridge && pip install -e . && deadbolt-bridge
 
 # ESP32 firmware

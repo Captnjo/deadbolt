@@ -8,60 +8,76 @@ struct ReceiveView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Receive")
-                .font(.title2)
-                .fontWeight(.bold)
+        VStack(spacing: 0) {
+            // Title bar
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .keyboardShortcut(.cancelAction)
 
-            if let wallet = walletService.activeWallet {
-                // QR Code
-                if let qrImage = generateQRCode(from: wallet.address) {
-                    #if os(macOS)
-                    Image(nsImage: qrImage)
-                        .resizable()
-                        .interpolation(.none)
-                        .scaledToFit()
-                        .frame(width: 200, height: 200)
+                Spacer()
+
+                Text("Receive")
+                    .font(.headline)
+
+                Spacer()
+
+                Color.clear.frame(width: 24)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            VStack(spacing: 20) {
+                if let wallet = walletService.activeWallet {
+                    // QR Code
+                    if let qrImage = generateQRCode(from: wallet.address) {
+                        #if os(macOS)
+                        Image(nsImage: qrImage)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(width: 200, height: 200)
+                            .padding()
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        #else
+                        Image(uiImage: qrImage)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(width: 200, height: 200)
+                            .padding()
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        #endif
+                    }
+
+                    // Address display
+                    Text(wallet.address)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
                         .padding()
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    #else
-                    Image(uiImage: qrImage)
-                        .resizable()
-                        .interpolation(.none)
-                        .scaledToFit()
-                        .frame(width: 200, height: 200)
-                        .padding()
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    #endif
+                        .background(.quaternary.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    Button("Copy Address") {
+                        copyToClipboard(wallet.address)
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Text("No wallet selected")
+                        .foregroundStyle(.secondary)
                 }
 
-                // Address display
-                Text(wallet.address)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding()
-                    .background(.quaternary.opacity(0.5))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                Button("Copy Address") {
-                    copyToClipboard(wallet.address)
-                }
-                .buttonStyle(.borderedProminent)
-            } else {
-                Text("No wallet selected")
-                    .foregroundStyle(.secondary)
+                Spacer()
             }
-
-            Spacer()
-
-            Button("Back to Dashboard") {
-                dismiss()
-            }
-            .keyboardShortcut(.cancelAction)
+            .padding()
         }
-        .padding()
         .frame(minWidth: 400, minHeight: 400)
     }
 

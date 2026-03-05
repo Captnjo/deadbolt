@@ -23,6 +23,7 @@ class WalletDrawer extends ConsumerWidget {
     final walletsAsync = ref.watch(walletListProvider);
     final activeAddress = ref.watch(activeWalletProvider);
     final emojiMap = ref.watch(walletEmojiProvider).valueOrNull ?? {};
+    final hwConnected = ref.watch(hwDetectedProvider).valueOrNull ?? false;
 
     return Container(
       width: 280,
@@ -30,7 +31,6 @@ class WalletDrawer extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 36), // title bar spacer
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: Row(
@@ -71,6 +71,8 @@ class WalletDrawer extends ConsumerWidget {
                     shortAddress: _shortAddress(w.address),
                     emoji: emoji,
                     isActive: isActive,
+                    isHardware: w.source == 'hardware',
+                    isHwConnected: hwConnected,
                     onTap: () {
                       ref
                           .read(walletListProvider.notifier)
@@ -104,6 +106,8 @@ class _DrawerWalletTile extends StatelessWidget {
   final String shortAddress;
   final String emoji;
   final bool isActive;
+  final bool isHardware;
+  final bool isHwConnected;
   final VoidCallback onTap;
 
   const _DrawerWalletTile({
@@ -111,6 +115,8 @@ class _DrawerWalletTile extends StatelessWidget {
     required this.shortAddress,
     required this.emoji,
     required this.isActive,
+    this.isHardware = false,
+    this.isHwConnected = false,
     required this.onTap,
   });
 
@@ -146,14 +152,25 @@ class _DrawerWalletTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight:
-                          isActive ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                isActive ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isHardware) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.usb, size: 14,
+                            color: isHwConnected ? BrandColors.primary : BrandColors.textSecondary),
+                      ],
+                    ],
                   ),
                   Text(
                     shortAddress,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,13 +34,18 @@ class _AppShellState extends ConsumerState<AppShell>
       label: Text('History'),
     ),
     NavigationRailDestination(
+      icon: Icon(Icons.contacts_outlined),
+      selectedIcon: Icon(Icons.contacts),
+      label: Text('Contacts'),
+    ),
+    NavigationRailDestination(
       icon: Icon(Icons.settings_outlined),
       selectedIcon: Icon(Icons.settings),
       label: Text('Settings'),
     ),
   ];
 
-  static const _routes = ['/dashboard', '/history', '/settings'];
+  static const _routes = ['/dashboard', '/history', '/address-book', '/settings'];
 
   @override
   void initState() {
@@ -92,7 +98,19 @@ class _AppShellState extends ConsumerState<AppShell>
       }
     }
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_drawerController.isForwardOrCompleted) {
+            _closeDrawer();
+          } else if (index != 0) {
+            context.go('/dashboard');
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       body: Row(
         children: [
           NavigationRail(
@@ -104,7 +122,7 @@ class _AppShellState extends ConsumerState<AppShell>
             labelType: NavigationRailLabelType.all,
             leading: Column(
               children: [
-                const SizedBox(height: 36), // title bar spacer
+                const SizedBox(height: 8),
                 GestureDetector(
                   onTap: _openDrawer,
                   child: Tooltip(
@@ -185,6 +203,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         ],
       ),
+    )),
     );
   }
 }
