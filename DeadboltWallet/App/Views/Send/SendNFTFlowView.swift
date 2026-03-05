@@ -59,7 +59,8 @@ struct SendNFTFlowView: View {
 
                 Color.clear.frame(width: 24)
             }
-            .padding()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
             Divider()
 

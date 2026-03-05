@@ -11,6 +11,9 @@ import '../features/wallet/connect_hardware_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/receive/receive_screen.dart';
 import '../features/send/send_screen.dart';
+import '../features/swap/swap_screen.dart';
+import '../features/nft/send_nft_screen.dart';
+import '../features/address_book/address_book_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
 import '../providers/onboarding_provider.dart';
@@ -46,6 +49,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SendScreen(),
       ),
+      GoRoute(
+        path: '/swap',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SwapScreen(),
+      ),
+      GoRoute(
+        path: '/send-nft',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SendNftScreen(),
+      ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
@@ -60,6 +73,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/history',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: HistoryScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/address-book',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: AddressBookScreen(),
             ),
           ),
           GoRoute(

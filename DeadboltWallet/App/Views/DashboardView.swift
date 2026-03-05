@@ -7,12 +7,12 @@ import HardwareWallet
 struct DashboardView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var authService: AuthService
-    @State private var activeSheet: ActiveSheet?
+    @Binding var activeSheet: ActiveSheet?
     @State private var hwConnected = false
     @State private var showErrorAlert = false
 
     enum ActiveSheet: Identifiable {
-        case send, sendToken, sendNFT, receive, swap, stake, history, wallets, addressBook, nativeStake
+        case send, sendNFT, receive, swap, stake, history, wallets, addressBook
         var id: Self { self }
     }
 
@@ -85,46 +85,6 @@ struct DashboardView: View {
             await checkHardwareWalletConnection()
             #endif
         }
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .send:
-                SendFlowView(walletService: walletService, authService: authService)
-                    .environmentObject(walletService)
-                    .environmentObject(authService)
-            case .sendToken:
-                SendTokenFlowView(walletService: walletService, authService: authService)
-                    .environmentObject(walletService)
-                    .environmentObject(authService)
-            case .sendNFT:
-                SendNFTFlowView()
-                    .environmentObject(walletService)
-            case .receive:
-                ReceiveView()
-                    .environmentObject(walletService)
-            case .swap:
-                SwapFlowView(walletService: walletService, authService: authService)
-                    .environmentObject(walletService)
-                    .environmentObject(authService)
-            case .stake:
-                StakeFlowView(walletService: walletService, authService: authService)
-                    .environmentObject(walletService)
-                    .environmentObject(authService)
-            case .history:
-                if let wallet = walletService.activeWallet {
-                    TransactionHistoryView(walletAddress: wallet.address)
-                        .environmentObject(walletService)
-                }
-            case .wallets:
-                WalletListView()
-                    .environmentObject(walletService)
-                    .environmentObject(authService)
-            case .addressBook:
-                AddressBookView()
-            case .nativeStake:
-                NativeStakeView()
-                    .environmentObject(walletService)
-            }
-        }
     }
 
     // MARK: - Header
@@ -155,12 +115,12 @@ struct DashboardView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
-                                .background(Color.orange)
+                                .background(Brand.solarFlare)
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
                             // Connection status dot
                             Circle()
-                                .fill(hwConnected ? Color.green : Color.red)
+                                .fill(hwConnected ? Brand.cryptoGreen : Color.red)
                                 .frame(width: 8, height: 8)
                                 .help(hwConnected ? "Hardware wallet connected" : "Hardware wallet disconnected")
                         }
@@ -228,14 +188,14 @@ struct DashboardView: View {
             if walletService.solPrice > 0 {
                 Text(DashboardViewModel.formatUSD(walletService.solUSDValue))
                     .font(.title2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Brand.steelGray)
             }
 
             if walletService.totalPortfolioUSD > walletService.solUSDValue {
                 HStack {
                     Text("Total Portfolio")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Brand.steelGray)
                     Text(DashboardViewModel.formatUSD(walletService.totalPortfolioUSD))
                         .font(.caption)
                         .fontWeight(.semibold)
@@ -245,24 +205,25 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.quaternary.opacity(0.5))
+        .background(Brand.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Brand.cardBorder))
     }
 
     // MARK: - Quick Actions
 
     private var quickActionToolbar: some View {
         HStack(spacing: 12) {
-            quickActionButton(title: "Send", icon: "arrow.up.circle.fill", color: .blue) {
+            quickActionButton(title: "Send", icon: "arrow.up.circle.fill", color: Brand.solarFlare) {
                 activeSheet = .send
             }
-            quickActionButton(title: "Receive", icon: "arrow.down.circle.fill", color: .green) {
+            quickActionButton(title: "Receive", icon: "arrow.down.circle.fill", color: Brand.cryptoGreen) {
                 activeSheet = .receive
             }
-            quickActionButton(title: "Swap", icon: "arrow.triangle.2.circlepath.circle.fill", color: .orange) {
+            quickActionButton(title: "Swap", icon: "arrow.triangle.2.circlepath.circle.fill", color: Brand.solarFlare) {
                 activeSheet = .swap
             }
-            quickActionButton(title: "Stake", icon: "lock.circle.fill", color: .purple) {
+            quickActionButton(title: "Stake", icon: "lock.circle.fill", color: Brand.cryptoGreen) {
                 activeSheet = .stake
             }
         }
@@ -281,8 +242,9 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.3))
+            .background(Brand.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Brand.cardBorder))
         }
         .buttonStyle(.plain)
     }
@@ -291,13 +253,10 @@ struct DashboardView: View {
 
     private var secondaryActionToolbar: some View {
         HStack(spacing: 12) {
-            quickActionButton(title: "Send Token", icon: "arrow.up.right.circle.fill", color: .teal) {
-                activeSheet = .sendToken
-            }
-            quickActionButton(title: "Send NFT", icon: "photo.circle.fill", color: .indigo) {
+            quickActionButton(title: "Send NFT", icon: "photo.circle.fill", color: Brand.steelGray) {
                 activeSheet = .sendNFT
             }
-            quickActionButton(title: "Address Book", icon: "person.crop.rectangle.stack.fill", color: .brown) {
+            quickActionButton(title: "Address Book", icon: "person.crop.rectangle.stack.fill", color: Brand.steelGray) {
                 activeSheet = .addressBook
             }
         }
@@ -325,7 +284,7 @@ struct DashboardView: View {
                     }
                 }
                 .padding()
-                .background(.quaternary.opacity(0.5))
+                .background(Brand.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
@@ -360,7 +319,7 @@ struct DashboardView: View {
                 }
             }
             .padding()
-            .background(.quaternary.opacity(0.5))
+            .background(Brand.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
@@ -415,7 +374,7 @@ struct DashboardView: View {
                 }
             }
             .padding()
-            .background(.quaternary.opacity(0.5))
+            .background(Brand.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .task {
                 await loadNFTs()

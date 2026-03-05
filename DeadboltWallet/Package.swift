@@ -20,7 +20,11 @@ let package = Package(
             ],
             path: "App",
             exclude: ["iOS/Info.plist"],
-            resources: [.copy("Resources/AppIcon.png")]
+            resources: [
+                .copy("Resources/AppIcon.png"),
+                .copy("Resources/DeadboltLogomark.png"),
+                .copy("Resources/DeadboltLogotype.png"),
+            ]
         ),
     ]
 )
