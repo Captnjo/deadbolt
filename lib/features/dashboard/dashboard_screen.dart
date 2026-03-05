@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/stake.dart';
 import '../../models/token.dart';
 import '../../providers/balance_provider.dart';
 import '../../providers/network_provider.dart';
+import '../../providers/nft_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../shared/formatters.dart';
 import '../../theme/brand_theme.dart';
@@ -100,20 +102,36 @@ class DashboardScreen extends ConsumerWidget {
     NetworkState net,
     PortfolioState portfolio,
   ) {
+    // Check if active wallet is hardware
+    final walletsList = ref.watch(walletListProvider).valueOrNull ?? [];
+    final activeWallet =
+        walletsList.where((w) => w.address == address).firstOrNull;
+    final isHardwareWallet = activeWallet?.source == 'hardware';
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        // Header
-        _header(context, address, walletName, net, ref),
+        // Header with HW status
+        _header(context, address, walletName, net, ref,
+            showHwIndicator: isHardwareWallet,
+            hwConnected: ref.watch(hwDetectedProvider).valueOrNull ?? false),
         const SizedBox(height: 24),
         // Balance card
         _balanceCard(portfolio, net.network),
         const SizedBox(height: 24),
         // Quick actions
         _quickActions(context),
+        const SizedBox(height: 8),
+        // Secondary actions
+        _secondaryActions(context),
         const SizedBox(height: 24),
         // Token list
         _tokenList(portfolio),
+        // Staked LST section
+        _stakedLstSection(portfolio),
+        // NFT gallery (mainnet only)
+        if (net.network == SolanaNetwork.mainnet)
+          _nftGallery(context, ref),
       ],
     );
   }
@@ -123,8 +141,10 @@ class DashboardScreen extends ConsumerWidget {
     String address,
     String walletName,
     NetworkState net,
-    WidgetRef ref,
-  ) {
+    WidgetRef ref, {
+    bool showHwIndicator = false,
+    bool hwConnected = false,
+  }) {
     return Row(
       children: [
         Expanded(
@@ -161,6 +181,14 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
+        if (showHwIndicator) ...[
+          Tooltip(
+            message: hwConnected ? 'Hardware wallet connected' : 'Hardware wallet',
+            child: Icon(Icons.usb, size: 18,
+                color: hwConnected ? BrandColors.primary : BrandColors.textSecondary),
+          ),
+          const SizedBox(width: 8),
+        ],
         _networkBadge(net.network),
         const SizedBox(width: 8),
         IconButton(
@@ -237,8 +265,7 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         _actionButton(context, Icons.arrow_upward, 'Send', '/send'),
         _actionButton(context, Icons.arrow_downward, 'Receive', '/receive'),
-        _actionButton(context, Icons.swap_horiz, 'Swap', null),
-        _actionButton(context, Icons.layers, 'Stake', null),
+        _actionButton(context, Icons.swap_horiz, 'Swap', '/swap'),
       ],
     );
   }
@@ -351,6 +378,174 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ─── Secondary Actions (1.8) ───
+
+  Widget _secondaryActions(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _actionButton(context, Icons.image, 'Send NFT', '/send-nft'),
+        _actionButton(context, Icons.contacts, 'Address Book', '/address-book'),
+      ],
+    );
+  }
+
+  // ─── Staked LST Section (1.5) ───
+
+  Widget _stakedLstSection(PortfolioState portfolio) {
+    final lstBalances = portfolio.tokenBalances
+        .where((tb) => LstPools.mintSet.contains(tb.definition.mint))
+        .toList();
+
+    if (lstBalances.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        const Text('Staked',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: BrandColors.textSecondary)),
+        const SizedBox(height: 8),
+        ...lstBalances.map((tb) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: BrandColors.success.withAlpha(30),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.layers,
+                        color: BrandColors.success, size: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tb.definition.symbol,
+                            style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text(tb.definition.name,
+                            style: const TextStyle(
+                                fontSize: 12, color: BrandColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(Formatters.formatTokenAmount(tb.uiAmount),
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      if (tb.usdValue != null)
+                        Text(Formatters.formatUsd(tb.usdValue!),
+                            style: const TextStyle(
+                                fontSize: 12, color: BrandColors.textSecondary)),
+                    ],
+                  ),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+
+  // ─── NFT Gallery (1.6) ───
+
+  Widget _nftGallery(BuildContext context, WidgetRef ref) {
+    final nftState = ref.watch(nftProvider);
+
+    if (nftState.isLoadingNfts) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    if (nftState.nfts.isEmpty) return const SizedBox.shrink();
+
+    final displayNfts = nftState.nfts.take(4).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('NFTs',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.textSecondary)),
+            if (nftState.nfts.length > 4)
+              TextButton(
+                onPressed: () => context.push('/send-nft'),
+                child: const Text('View All',
+                    style: TextStyle(fontSize: 12, color: BrandColors.primary)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1,
+          ),
+          itemCount: displayNfts.length,
+          itemBuilder: (ctx, i) {
+            final nft = displayNfts[i];
+            return Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: nft.imageUrl != null
+                        ? Image.network(
+                            nft.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, e, st) => Container(
+                              color: BrandColors.card,
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.image,
+                                  color: BrandColors.textSecondary, size: 24),
+                            ),
+                          )
+                        : Container(
+                            color: BrandColors.card,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.image,
+                                color: BrandColors.textSecondary, size: 24),
+                          ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Text(
+                      nft.name,
+                      style: const TextStyle(fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

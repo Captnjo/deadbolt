@@ -11,6 +11,7 @@ struct DeadboltApp: App {
     @StateObject private var walletService = WalletService()
     @StateObject private var agentService = AgentService()
     @StateObject private var authService = AuthService()
+    @State private var dashboardSheet: DashboardView.ActiveSheet?
     #if os(macOS)
     @State private var showBootDetect = true
     @State private var unsecuredKeypairs: [UnsecuredKeypair] = []
@@ -33,6 +34,7 @@ struct DeadboltApp: App {
             }
             NSApplication.shared.applicationIconImage = rounded
         }
+
         #endif
     }
 
@@ -40,7 +42,7 @@ struct DeadboltApp: App {
         WindowGroup {
             #if os(iOS)
             TabView {
-                DashboardView()
+                DashboardView(activeSheet: $dashboardSheet)
                     .environmentObject(walletService)
                     .tabItem { Label("Dashboard", systemImage: "house") }
 
@@ -58,6 +60,8 @@ struct DeadboltApp: App {
                     .tabItem { Label("Address Book", systemImage: "person.crop.rectangle.stack") }
             }
             .environmentObject(authService)
+            .preferredColorScheme(.dark)
+            .tint(Brand.solarFlare)
             .sheet(isPresented: $authService.showPasswordEntry) {
                 PasswordEntryView()
                     .environmentObject(authService)
@@ -74,7 +78,7 @@ struct DeadboltApp: App {
                 NavigationSplitView {
                     sidebarContent
                 } detail: {
-                    DashboardView()
+                    DashboardView(activeSheet: $dashboardSheet)
                         .environmentObject(walletService)
                 }
                 .navigationSplitViewStyle(.balanced)
@@ -100,9 +104,47 @@ struct DeadboltApp: App {
                 }
             }
             .environmentObject(authService)
+            .preferredColorScheme(.dark)
+            .tint(Brand.solarFlare)
             .sheet(isPresented: $authService.showPasswordEntry) {
                 PasswordEntryView()
                     .environmentObject(authService)
+            }
+            .sheet(item: $dashboardSheet) { sheet in
+                Group {
+                    switch sheet {
+                    case .send:
+                        UnifiedSendView(walletService: walletService, authService: authService)
+                            .environmentObject(walletService)
+                            .environmentObject(authService)
+                    case .sendNFT:
+                        SendNFTFlowView()
+                            .environmentObject(walletService)
+                    case .receive:
+                        ReceiveView()
+                            .environmentObject(walletService)
+                    case .swap:
+                        UnifiedSwapView(walletService: walletService, authService: authService)
+                            .environmentObject(walletService)
+                            .environmentObject(authService)
+                    case .stake:
+                        UnifiedStakeView(walletService: walletService, authService: authService)
+                            .environmentObject(walletService)
+                            .environmentObject(authService)
+                    case .history:
+                        if let wallet = walletService.activeWallet {
+                            TransactionHistoryView(walletAddress: wallet.address)
+                                .environmentObject(walletService)
+                        }
+                    case .wallets:
+                        WalletListView()
+                            .environmentObject(walletService)
+                            .environmentObject(authService)
+                    case .addressBook:
+                        AddressBookView()
+                    }
+                }
+                .sheetToolbarFix()
             }
             .animation(.easeInOut(duration: 0.3), value: showBootDetect)
             .animation(.easeInOut(duration: 0.3), value: agentService.currentRequest?.id)
@@ -170,7 +212,7 @@ struct DeadboltApp: App {
     private var sidebarContent: some View {
         List {
             NavigationLink {
-                DashboardView()
+                DashboardView(activeSheet: $dashboardSheet)
                     .environmentObject(walletService)
                     .environmentObject(authService)
             } label: {
@@ -204,13 +246,6 @@ struct DeadboltApp: App {
             }
 
             NavigationLink {
-                NativeStakeView()
-                    .environmentObject(walletService)
-            } label: {
-                Label("Native Staking", systemImage: "lock.shield")
-            }
-
-            NavigationLink {
                 HardwareWalletSettingsView()
                     .environmentObject(walletService)
             } label: {
@@ -235,8 +270,30 @@ struct DeadboltApp: App {
                 Label("Settings", systemImage: "gear")
             }
         }
-        .navigationTitle("Deadbolt")
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            sidebarHeader
+        }
+    }
+
+    private var sidebarHeader: some View {
+        HStack(spacing: 2) {
+            if let logoURL = Bundle.module.url(forResource: "DeadboltLogomark", withExtension: "png"),
+               let nsImage = NSImage(contentsOf: logoURL) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(.primary)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 32)
+            }
+            Text("EADBOLT")
+                .font(.system(size: 15, weight: .bold, design: .default))
+                .tracking(1.5)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
     #endif
 }

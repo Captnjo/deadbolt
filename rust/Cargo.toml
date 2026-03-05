@@ -1,0 +1,3 @@
+[workspace]
+members = ["deadbolt_core", "deadbolt_bridge"]
+resolver = "2"

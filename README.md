@@ -4,7 +4,7 @@ A cross-platform Solana wallet with ESP32 hardware signer support and an embedde
 
 ## What It Does
 
-- **Cross-platform wallet** — Flutter + Rust app targeting macOS, Windows, Linux, iOS, and Android. Send SOL/tokens, Jupiter swaps, Sanctum liquid staking, Jito MEV protection.
+- **Cross-platform wallet** — Flutter + Rust app targeting macOS, Windows, Linux, iOS, and Android. Send SOL/tokens, Jupiter/DFlow swaps, Jito MEV protection.
 - **ESP32 hardware signing** — Ed25519 keys never leave the $5 microcontroller. Press a physical button to approve every transaction.
 - **Agent signing gateway** — AI agents POST structured intents via REST API. The wallet builds and previews transactions; the user approves with a button press.
 - **Configurable guardrails** — Per-transaction limits, daily caps, token/program whitelists, cooldowns. Enforced at the Rust signing layer — cannot be bypassed.
@@ -70,13 +70,16 @@ lib/                     # Flutter/Dart
     dashboard/           # Portfolio view (SOL + token balances, USD values)
     send/                # Send flow (simulation, fee estimation, inline review)
     receive/             # QR code + address copy
+    swap/                # Jupiter/DFlow swap flow
     wallet/              # Wallet management (create, import, hardware)
     history/             # Transaction history (Helius Enhanced API)
+    address_book/        # Contact management
+    nft/                 # Send NFT flow
     settings/            # Network, API keys, preferences
     onboarding/          # First-run wizard
-  shared/                # App shell, wallet drawer, formatters, widgets
+  shared/                # App shell, title bar, wallet drawer, formatters, widgets
 
-DeadboltWallet/          # Legacy Swift macOS app (being ported to Flutter)
+DeadboltWallet/          # Legacy Swift macOS app (superseded by Flutter)
 firmware/                # ESP32 Arduino firmware for hardware signing
 bridge/                  # Python FastAPI service for remote agent access
 calypso/                 # Legacy Node.js transaction modules
@@ -175,8 +178,7 @@ curl -X POST http://localhost:9876/api/v1/intent \
 |--------|-------------|
 | `send_sol` | Transfer SOL |
 | `send_token` | Transfer SPL token |
-| `swap` | Jupiter swap |
-| `stake` | Sanctum liquid staking |
+| `swap` | Jupiter/DFlow swap |
 | `sign_message` | Sign an arbitrary message |
 | `create_wallet` | Generate a new keypair |
 | `batch` | Multiple intents, atomically approved |
@@ -207,7 +209,7 @@ Configurable in Settings. Enforced at the Rust signing layer before any transact
 | Daily transaction limit | 50 |
 | Daily USD limit | $5,000 |
 | Token whitelist | SOL, USDC, USDT (empty = allow all) |
-| Program whitelist | System, Token, Jupiter, Sanctum |
+| Program whitelist | System, Token, Jupiter |
 | Cooldown between txs | 5 seconds |
 
 Because Deadbolt owns the signing key, guardrails cannot be bypassed — unlike a wrapper around an external wallet.

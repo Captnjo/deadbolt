@@ -1,0 +1,15 @@
+[package]
+name = "rust_lib_deadbolt"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+deadbolt_core = { path = "../deadbolt_core" }
+flutter_rust_bridge = "=2.11.1"
+base64 = "0.22"
+hex = "0.4"
+serde_json = "1"
+serialport = "4"

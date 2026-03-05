@@ -15,13 +15,13 @@ The main portfolio view — currently a placeholder in Flutter.
 - [x] **1.2** SOL → USD conversion (price feed)
 - [x] **1.3** Total portfolio USD value
 - [x] **1.4** SPL token balances list (mint, amount, USD value)
-- [ ] **1.5** Staked LST balances section (jitoSOL, mSOL, bSOL, bonkSOL)
-- [ ] **1.6** NFT gallery grid (thumbnails via Helius, "View All" link)
-- [x] **1.7** Quick action toolbar (Send, Receive, Swap, Stake buttons)
-- [ ] **1.8** Secondary actions (Send NFT, Address Book)
+- [x] **1.5** Staked LST balances section (jitoSOL, mSOL, bSOL, bonkSOL)
+- [x] **1.6** NFT gallery grid (thumbnails via Helius, "View All" link)
+- [x] **1.7** Quick action toolbar (Send, Receive, Swap buttons)
+- [x] **1.8** Secondary actions (Send NFT, Address Book)
 - [x] **1.9** Active wallet name + address display with copy
 - [x] **1.10** Network badge (DEVNET / MAINNET / TESTNET)
-- [ ] **1.11** Hardware wallet connection status indicator
+- [x] **1.11** Hardware wallet connection status indicator
 - [x] **1.12** Pull-to-refresh / refresh button
 
 ---
@@ -51,7 +51,7 @@ Required before any on-chain reads or writes.
 ## 4. Send
 
 - [x] **4.1** Recipient address input with Base58 validation
-- [ ] **4.2** Address book autocomplete / suggestions in recipient field
+- [x] **4.2** Address book autocomplete / suggestions in recipient field
 - [x] **4.3** SOL amount entry with Max button
 - [x] **4.4** SPL token selector (dropdown of held tokens)
 - [x] **4.5** SPL token amount entry
@@ -68,37 +68,33 @@ Required before any on-chain reads or writes.
 
 ## 5. Swap
 
-- [ ] **5.1** Input token selector + amount with Max button
-- [ ] **5.2** Output token selector
-- [ ] **5.3** Swap direction toggle (reverse pair)
-- [ ] **5.4** Jupiter API integration (quote + swap tx)
-- [ ] **5.5** DFlow API integration (quote + order)
-- [ ] **5.6** Aggregator toggle (Jupiter / DFlow)
-- [ ] **5.7** Live debounced quote updates
-- [ ] **5.8** Route / price impact display (Jupiter)
-- [ ] **5.9** Jupiter API key configuration in settings
-- [ ] **5.10** DFlow API key configuration in settings
-- [ ] **5.11** Review + simulate + submit (same as Send flow)
+- [x] **5.1** Input token selector + amount with Max button
+- [x] **5.2** Output token selector
+- [x] **5.3** Swap direction toggle (reverse pair)
+- [x] **5.4** Jupiter API integration (quote + swap tx)
+- [x] **5.5** DFlow API integration (quote + order)
+- [x] **5.6** Aggregator toggle (Jupiter / DFlow)
+- [x] **5.7** Live debounced quote updates
+- [x] **5.8** Route / price impact display (Jupiter)
+- [x] **5.9** Jupiter API key configuration in settings
+- [x] **5.10** DFlow API key configuration in settings
+- [x] **5.11** Review + simulate + submit (same as Send flow)
 
 ---
 
-## 6. Stake
+## ~~6. Stake~~ (Removed)
 
-- [ ] **6.1** SOL amount input with Max button
-- [ ] **6.2** LST pool selector (jitoSOL, mSOL, bSOL, bonkSOL)
-- [ ] **6.3** Sanctum API integration (stake quote)
-- [ ] **6.4** Live quote display (expected LST output)
-- [ ] **6.5** Review + simulate + submit
+Staking removed — users can swap to LSTs via the Swap screen instead.
 
 ---
 
 ## 7. Send NFT
 
-- [ ] **7.1** Helius `getAssets` integration (fetch NFTs for owner)
-- [ ] **7.2** NFT selector grid (image + name)
-- [ ] **7.3** Recipient picker (same as Send)
-- [ ] **7.4** NFT transfer transaction building
-- [ ] **7.5** Review + simulate + submit
+- [x] **7.1** Helius `getAssets` integration (fetch NFTs for owner)
+- [x] **7.2** NFT selector grid (image + name)
+- [x] **7.3** Recipient picker (same as Send)
+- [x] **7.4** NFT transfer transaction building
+- [x] **7.5** Review + simulate + submit
 
 ---
 
@@ -116,14 +112,14 @@ Required before any on-chain reads or writes.
 
 ## 9. Address Book
 
-- [ ] **9.1** Contact list (tag + address)
-- [ ] **9.2** Add contact (tag + address with validation)
-- [ ] **9.3** Edit contact tag
-- [ ] **9.4** Delete contact (with confirmation)
-- [ ] **9.5** Search / filter contacts
-- [ ] **9.6** Copy address from contact
-- [ ] **9.7** Persist contacts in config
-- [ ] **9.8** Sidebar navigation entry for Address Book
+- [x] **9.1** Contact list (tag + address)
+- [x] **9.2** Add contact (tag + address with validation)
+- [x] **9.3** Edit contact tag
+- [x] **9.4** Delete contact (with confirmation)
+- [x] **9.5** Search / filter contacts
+- [x] **9.6** Copy address from contact
+- [x] **9.7** Persist contacts in config
+- [x] **9.8** Sidebar navigation entry for Address Book
 
 ---
 
@@ -184,8 +180,8 @@ Required before any on-chain reads or writes.
 
 - [x] **14.1** Settings screen structure (currently stub with reset button)
 - [x] **14.2** Network section (network picker, RPC URL, Helius key)
-- [ ] **14.3** Swap section (aggregator picker, Jupiter key, DFlow key)
-- [ ] **14.4** Preferences section (Jito MEV protection toggle)
+- [x] **14.3** Swap section (aggregator picker, Jupiter key, DFlow key)
+- [x] **14.4** Preferences section (Jito MEV protection toggle)
 - [ ] **14.5** Security section (link to auth settings)
 - [ ] **14.6** Agent API section (link to guardrails)
 - [x] **14.7** Debug: reset onboarding
@@ -211,7 +207,7 @@ Required before any on-chain reads or writes.
 
 - [x] **16.1** Sidebar with Dashboard / History / Settings + wallet avatar at top
 - [x] **16.2** Wallet drawer (slide-out panel from avatar for quick wallet switching)
-- [ ] **16.3** Add Address Book to sidebar
+- [x] **16.3** Add Address Book to sidebar
 - [ ] **16.4** Add Hardware Wallet to sidebar (macOS only)
 - [ ] **16.5** Add Agent API to sidebar (macOS only)
 
@@ -242,12 +238,11 @@ Required before any on-chain reads or writes.
 | 5 | **8. Transaction History** | Users need to see what happened |
 | 6 | **9. Address Book** | Quality-of-life for Send |
 | 7 | **5. Swap** | Major feature, needs API keys |
-| 8 | **6. Stake** | Major feature, needs Sanctum |
-| 9 | **10. Authentication** | Security hardening |
-| 10 | **14. Settings (Full)** | Wraps up configuration |
-| 11 | **7. Send NFT** | Nice-to-have |
-| 12 | **11. Hardware (remaining)** | TX signing on device |
-| 13 | **12. Agent API** | Power user feature |
-| 14 | **13. Guardrails** | Agent safety |
-| 15 | **15. Wallet Enhancements** | Keypair import, rename, vanity |
-| 16 | **16-17. Nav + Polish** | Final touches |
+| 8 | **10. Authentication** | Security hardening |
+| 9 | **14. Settings (Full)** | Wraps up configuration |
+| 10 | **7. Send NFT** | Nice-to-have |
+| 11 | **11. Hardware (remaining)** | TX signing on device |
+| 12 | **12. Agent API** | Power user feature |
+| 13 | **13. Guardrails** | Agent safety |
+| 14 | **15. Wallet Enhancements** | Keypair import, rename, vanity |
+| 15 | **16-17. Nav + Polish** | Final touches |
