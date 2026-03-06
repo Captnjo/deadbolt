@@ -7,10 +7,15 @@ const _stablecoins = {
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
 };
 
-/// Fetch SOL/USD price from CoinGecko free API.
-Future<double> fetchSolPrice() async {
+/// Fetch SOL price from CoinGecko in USD and an optional display currency.
+/// When [displayCode] is 'usd' or 'sol', only the USD price is fetched.
+Future<({double usd, double display})> fetchSolPrice({
+  String displayCode = 'usd',
+}) async {
+  final needsDisplay = displayCode != 'usd' && displayCode != 'sol';
+  final currencies = needsDisplay ? 'usd,$displayCode' : 'usd';
   final uri = Uri.parse(
-    'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',
+    'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=$currencies',
   );
   final response = await http.get(uri);
   if (response.statusCode != 200) {
@@ -18,7 +23,11 @@ Future<double> fetchSolPrice() async {
   }
   final json = jsonDecode(response.body) as Map<String, dynamic>;
   final solana = json['solana'] as Map<String, dynamic>;
-  return (solana['usd'] as num).toDouble();
+  final usd = (solana['usd'] as num).toDouble();
+  final display = needsDisplay
+      ? (solana[displayCode] as num).toDouble()
+      : usd;
+  return (usd: usd, display: display);
 }
 
 /// Fetch token price from Jupiter Price API v2.

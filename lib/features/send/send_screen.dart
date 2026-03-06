@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/send.dart';
 import '../../models/token.dart';
 import '../../providers/address_book_provider.dart';
+import '../../providers/api_keys_provider.dart';
 import '../../providers/balance_provider.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/send_provider.dart';
@@ -343,6 +344,9 @@ class _AssetStep extends ConsumerWidget {
 
   Widget _assetList(
       BuildContext context, WidgetRef ref, PortfolioState portfolio) {
+    final currency = ref.watch(
+        apiKeysProvider.select((s) => s.displayCurrency));
+    final rate = portfolio.exchangeRate;
     return ListView(
       children: [
         // SOL
@@ -353,7 +357,8 @@ class _AssetStep extends ConsumerWidget {
           name: 'Solana',
           balance: Formatters.formatSol(portfolio.solBalance),
           usdValue: portfolio.solPrice > 0
-              ? Formatters.formatUsd(portfolio.solUsdValue)
+              ? Formatters.formatCurrency(
+                  portfolio.solUsdValue * rate, currency)
               : null,
           onTap: () => ref.read(sendProvider.notifier).selectAsset(
                 SendSol(lamportsBalance: portfolio.solBalance),
@@ -367,7 +372,8 @@ class _AssetStep extends ConsumerWidget {
               name: tb.definition.name,
               balance: Formatters.formatTokenAmount(tb.uiAmount),
               usdValue: tb.usdValue != null
-                  ? Formatters.formatUsd(tb.usdValue!)
+                  ? Formatters.formatCurrency(
+                      tb.usdValue! * rate, currency)
                   : null,
               onTap: () => ref
                   .read(sendProvider.notifier)
@@ -470,10 +476,14 @@ class _AmountStep extends ConsumerWidget {
     final hasAmount = amount > 0;
     final exceedsBalance = sendState.amountExceedsBalance;
 
-    // USD estimate
-    String? usdEstimate;
+    // Value estimate in display currency
+    final currency = ref.watch(
+        apiKeysProvider.select((s) => s.displayCurrency));
+    final exchangeRate = balanceAsync.valueOrNull?.exchangeRate ?? 1.0;
+    String? valueEstimate;
     if (network == SolanaNetwork.mainnet && asset is SendSol && solPrice > 0) {
-      usdEstimate = Formatters.formatUsd(amount * solPrice);
+      valueEstimate = Formatters.formatCurrency(
+          amount * solPrice * exchangeRate, currency);
     }
 
     return Padding(
@@ -519,9 +529,9 @@ class _AmountStep extends ConsumerWidget {
               }
             },
           ),
-          if (usdEstimate != null) ...[
+          if (valueEstimate != null) ...[
             const SizedBox(height: 8),
-            Text(usdEstimate,
+            Text(valueEstimate,
                 style: const TextStyle(
                     color: BrandColors.textSecondary, fontSize: 14)),
           ],
@@ -761,13 +771,8 @@ class _ConfirmingStep extends ConsumerWidget {
     final isConfirmed = sendState.txStatus == TxStatus.confirmed;
     final isFailed = sendState.txStatus == TxStatus.failed;
 
-    final explorerBase = switch (network) {
-      SolanaNetwork.mainnet => 'https://solscan.io/tx/',
-      SolanaNetwork.devnet => 'https://solscan.io/tx/',
-      SolanaNetwork.testnet => 'https://explorer.solana.com/tx/',
-    };
-    final explorerSuffix =
-        network == SolanaNetwork.devnet ? '?cluster=devnet' : '';
+    final suffix = network == SolanaNetwork.devnet ? '?cluster=devnet' : '';
+    final explorerUrl = 'https://orb.helius.dev/tx/$signature$suffix';
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -835,7 +840,7 @@ class _ConfirmingStep extends ConsumerWidget {
           if (signature.isNotEmpty) ...[
             const SizedBox(height: 8),
             SelectableText(
-              '$explorerBase$signature$explorerSuffix',
+              explorerUrl,
               style: const TextStyle(
                   fontSize: 11,
                   color: BrandColors.primary,

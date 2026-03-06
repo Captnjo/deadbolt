@@ -43,6 +43,15 @@ class TokenDefinition {
     required this.decimals,
   });
 
+  static const _solMint = 'So11111111111111111111111111111111111111112';
+
+  factory TokenDefinition.sol() => const TokenDefinition(
+        mint: _solMint,
+        name: 'Solana',
+        symbol: 'SOL',
+        decimals: 9,
+      );
+
   factory TokenDefinition.fromJson(Map<String, dynamic> json) {
     return TokenDefinition(
       mint: json['mint'] as String,

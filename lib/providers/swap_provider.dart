@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +16,38 @@ import '../src/rust/api/hardware.dart' as hw_bridge;
 import 'api_keys_provider.dart';
 import 'network_provider.dart';
 import 'wallet_provider.dart';
+
+const _base58Alphabet =
+    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+Uint8List base58Decode(String input) {
+  final bytes = <int>[];
+  for (final c in input.codeUnits) {
+    final carry = _base58Alphabet.indexOf(String.fromCharCode(c));
+    if (carry < 0) throw FormatException('Invalid base58 character: $c');
+    int j = bytes.length;
+    int acc = carry;
+    while (j > 0 || acc > 0) {
+      j--;
+      if (j >= 0) acc += bytes[j] * 58;
+      if (j >= 0) {
+        bytes[j] = acc & 0xFF;
+      } else {
+        bytes.insert(0, acc & 0xFF);
+      }
+      acc >>= 8;
+    }
+  }
+  // Leading zeros
+  for (final c in input.codeUnits) {
+    if (c == 0x31) {
+      bytes.insert(0, 0);
+    } else {
+      break;
+    }
+  }
+  return Uint8List.fromList(bytes);
+}
 
 class SwapNotifier extends Notifier<SwapState> {
   Timer? _debounce;
@@ -124,19 +158,16 @@ class SwapNotifier extends Notifier<SwapState> {
           jupiter.dispose();
         }
       } else {
-        final address = _activeAddress;
-        if (address == null) throw Exception('No active wallet');
         final apiKeys = ref.read(apiKeysProvider);
         final dflow = DFlowService(apiKey: apiKeys.dflowKey);
         try {
-          final order = await dflow.getOrder(
+          final quote = await dflow.getQuote(
             inputMint: input.definition.mint,
             outputMint: output.definition.mint,
             amount: rawAmount.toString(),
-            userPublicKey: address,
           );
           state = state.copyWith(
-            dflowOrder: order,
+            dflowQuote: quote,
             isQuoting: false,
           );
         } finally {
@@ -217,25 +248,42 @@ class SwapNotifier extends Notifier<SwapState> {
     final address = _activeAddress;
     if (address == null) throw Exception('No active wallet');
 
+    final rpc = _rpc;
     String unsignedTxBase64;
 
-    if (state.aggregator == SwapAggregator.jupiter) {
-      final quote = state.jupiterQuote;
-      if (quote == null) throw Exception('No quote available');
-      final apiKeys = ref.read(apiKeysProvider);
-      final jupiter = JupiterService(apiKey: apiKeys.jupiterKey);
-      try {
-        unsignedTxBase64 = await jupiter.getSwapTransaction(
-          quoteResponse: quote.raw,
-          userPublicKey: address,
-        );
-      } finally {
-        jupiter.dispose();
+    try {
+      if (state.aggregator == SwapAggregator.jupiter) {
+        final quote = state.jupiterQuote;
+        if (quote == null) throw Exception('No quote available');
+        final apiKeys = ref.read(apiKeysProvider);
+        final jupiter = JupiterService(apiKey: apiKeys.jupiterKey);
+        try {
+          unsignedTxBase64 = await jupiter.getSwapTransaction(
+            quoteResponse: quote.raw,
+            userPublicKey: address,
+          );
+        } finally {
+          jupiter.dispose();
+        }
+      } else {
+        final quote = state.dflowQuote;
+        if (quote == null) throw Exception('No DFlow quote available');
+        final apiKeys = ref.read(apiKeysProvider);
+        final dflow = DFlowService(apiKey: apiKeys.dflowKey);
+        try {
+          unsignedTxBase64 = await dflow.getSwapTransaction(
+            quoteResponse: quote.raw,
+            userPublicKey: address,
+          );
+        } finally {
+          dflow.dispose();
+        }
       }
-    } else {
-      final order = state.dflowOrder;
-      if (order == null) throw Exception('No DFlow order available');
-      unsignedTxBase64 = order.transaction;
+
+      // Replace stale blockhash with a fresh one
+      unsignedTxBase64 = await _replaceBlockhash(rpc, unsignedTxBase64);
+    } finally {
+      rpc.dispose();
     }
 
     if (!_isHardwareWallet) {
@@ -256,6 +304,62 @@ class SwapNotifier extends Notifier<SwapState> {
       );
       return signed.base64;
     }
+  }
+
+  /// Replace the blockhash in a serialized VersionedTransaction (base64).
+  /// Solana VersionedTransactions: first byte is prefix (0x80 = v0),
+  /// then the message. The blockhash is the first 32 bytes of the message
+  /// body after the header (3 bytes) + signer count + signer pubkeys.
+  Future<String> _replaceBlockhash(
+      SolanaRpcClient rpc, String txBase64) async {
+    final bh = await rpc.getLatestBlockhash();
+    final freshHash = base58Decode(bh.blockhash);
+
+    final bytes = base64Decode(txBase64);
+    final buf = Uint8List.fromList(bytes);
+
+    // Find message start: skip signature section
+    int offset = 0;
+    // Compact-u16 for number of signatures
+    final numSigs = _readCompactU16(buf, offset);
+    offset = numSigs.nextOffset;
+    // Skip signature bytes (64 each)
+    offset += numSigs.value * 64;
+
+    // Now at message start
+    final messageStart = offset;
+
+    if (buf[messageStart] == 0x80) {
+      // Versioned transaction (v0): prefix byte + compact header
+      offset = messageStart + 1; // skip 0x80 prefix
+    }
+    // Legacy or after v0 prefix: 3-byte header
+    offset += 3; // numRequiredSignatures, numReadonlySignedAccounts, numReadonlyUnsignedAccounts
+
+    // Compact-u16 for number of account keys
+    final numKeys = _readCompactU16(buf, offset);
+    offset = numKeys.nextOffset;
+    // Skip account pubkeys (32 each)
+    offset += numKeys.value * 32;
+
+    // Next 32 bytes = blockhash
+    buf.setRange(offset, offset + 32, freshHash);
+
+    return base64Encode(buf);
+  }
+
+  ({int value, int nextOffset}) _readCompactU16(Uint8List buf, int offset) {
+    int value = 0;
+    int shift = 0;
+    int pos = offset;
+    while (true) {
+      final byte = buf[pos];
+      value |= (byte & 0x7F) << shift;
+      pos++;
+      if ((byte & 0x80) == 0) break;
+      shift += 7;
+    }
+    return (value: value, nextOffset: pos);
   }
 
   void _pollConfirmation(SolanaRpcClient rpc, String signature) {

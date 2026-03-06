@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/send.dart' show TxStatus;
 import '../../models/swap.dart';
@@ -142,8 +143,8 @@ class _ConfigureStep extends ConsumerWidget {
           // Aggregator toggle
           SegmentedButton<SwapAggregator>(
             segments: const [
-              ButtonSegment(value: SwapAggregator.jupiter, label: Text('Jupiter')),
               ButtonSegment(value: SwapAggregator.dflow, label: Text('DFlow')),
+              ButtonSegment(value: SwapAggregator.jupiter, label: Text('Jupiter')),
             ],
             selected: {swapState.aggregator},
             onSelectionChanged: (selected) {
@@ -499,7 +500,6 @@ class _ReviewStep extends ConsumerWidget {
     final isHardware = activeWallet?.source == 'hardware';
 
     final inputSymbol = swapState.inputToken?.definition.symbol ?? '';
-    final outputSymbol = swapState.outputToken?.definition.symbol ?? '';
 
     final isProcessing = swapState.txStatus == TxStatus.simulating ||
         swapState.txStatus == TxStatus.signing ||
@@ -520,7 +520,7 @@ class _ReviewStep extends ConsumerWidget {
                 children: [
                   _reviewRow('From', '${swapState.inputAmount} $inputSymbol'),
                   const Divider(height: 24),
-                  _reviewRow('To', '${swapState.outputAmount ?? '—'} $outputSymbol'),
+                  _reviewRow('To', _formatOutputForReview(swapState)),
                   const Divider(height: 24),
                   _reviewRow('Aggregator',
                       swapState.aggregator == SwapAggregator.jupiter ? 'Jupiter' : 'DFlow'),
@@ -605,6 +605,21 @@ class _ReviewStep extends ConsumerWidget {
     );
   }
 
+  String _formatOutputForReview(SwapState s) {
+    final raw = s.outputAmount;
+    if (raw == null) return '—';
+    final output = s.outputToken;
+    if (output != null) {
+      final decimals = output.definition.decimals;
+      final parsed = BigInt.tryParse(raw);
+      if (parsed != null) {
+        final ui = parsed.toDouble() / BigInt.from(10).pow(decimals).toDouble();
+        return '${Formatters.formatTokenAmount(ui)} ${output.definition.symbol}';
+      }
+    }
+    return raw;
+  }
+
   Widget _statusBanner(IconData icon, Color color, String text) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -671,43 +686,6 @@ class _ConfirmingStep extends ConsumerWidget {
           const SizedBox(height: 24),
           _statusTracker(status, isConfirmed),
           const SizedBox(height: 24),
-          if (signature.isNotEmpty) ...[
-            const Text('Signature',
-                style: TextStyle(
-                    color: BrandColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: SelectableText(
-                    Formatters.shortAddress(signature),
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 16),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: signature));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Signature copied'),
-                          duration: Duration(seconds: 1)),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              _explorerUrl(network, signature),
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: BrandColors.primary,
-                  fontFamily: 'monospace'),
-            ),
-          ],
           if (swapState.errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(swapState.errorMessage!,
@@ -716,12 +694,29 @@ class _ConfirmingStep extends ConsumerWidget {
           ],
           const SizedBox(height: 24),
           if (isConfirmed || isFailed)
-            ElevatedButton(
-              onPressed: () {
-                ref.read(swapProvider.notifier).reset();
-                context.go('/dashboard');
-              },
-              child: const Text('Done'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (signature.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      launchUrl(
+                        Uri.parse(_explorerUrl(network, signature)),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    icon: const Text('View'),
+                    label: const Icon(Icons.open_in_new, size: 16),
+                  ),
+                if (signature.isNotEmpty) const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.read(swapProvider.notifier).reset();
+                    context.go('/dashboard');
+                  },
+                  child: const Text('Done'),
+                ),
+              ],
             ),
         ],
       ),
