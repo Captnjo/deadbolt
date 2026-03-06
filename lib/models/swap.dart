@@ -37,22 +37,32 @@ class JupiterQuote {
   }
 }
 
-class DFlowOrder {
-  final String transaction;
-  final String expectedOutput;
-  final double priceImpact;
+class DFlowQuote {
+  final String inputMint;
+  final String outputMint;
+  final String inAmount;
+  final String outAmount;
+  final double priceImpactPct;
+  final Map<String, dynamic> raw;
 
-  const DFlowOrder({
-    required this.transaction,
-    required this.expectedOutput,
-    required this.priceImpact,
+  const DFlowQuote({
+    required this.inputMint,
+    required this.outputMint,
+    required this.inAmount,
+    required this.outAmount,
+    required this.priceImpactPct,
+    required this.raw,
   });
 
-  factory DFlowOrder.fromJson(Map<String, dynamic> json) {
-    return DFlowOrder(
-      transaction: json['transaction'] as String,
-      expectedOutput: json['expectedOutput']?.toString() ?? '0',
-      priceImpact: double.tryParse(json['priceImpact']?.toString() ?? '0') ?? 0,
+  factory DFlowQuote.fromJson(Map<String, dynamic> json) {
+    return DFlowQuote(
+      inputMint: json['inputMint'] as String? ?? '',
+      outputMint: json['outputMint'] as String? ?? '',
+      inAmount: json['inAmount']?.toString() ?? '0',
+      outAmount: json['outAmount']?.toString() ?? '0',
+      priceImpactPct:
+          double.tryParse(json['priceImpactPct']?.toString() ?? '0') ?? 0,
+      raw: json,
     );
   }
 }
@@ -64,7 +74,7 @@ class SwapState {
   final TokenBalance? outputToken;
   final String inputAmount;
   final JupiterQuote? jupiterQuote;
-  final DFlowOrder? dflowOrder;
+  final DFlowQuote? dflowQuote;
   final bool isQuoting;
   final String? quoteError;
   final TxStatus txStatus;
@@ -76,12 +86,12 @@ class SwapState {
 
   const SwapState({
     this.step = SwapStep.configure,
-    this.aggregator = SwapAggregator.jupiter,
+    this.aggregator = SwapAggregator.dflow,
     this.inputToken,
     this.outputToken,
     this.inputAmount = '',
     this.jupiterQuote,
-    this.dflowOrder,
+    this.dflowQuote,
     this.isQuoting = false,
     this.quoteError,
     this.txStatus = TxStatus.idle,
@@ -99,7 +109,7 @@ class SwapState {
     TokenBalance? outputToken,
     String? inputAmount,
     JupiterQuote? jupiterQuote,
-    DFlowOrder? dflowOrder,
+    DFlowQuote? dflowQuote,
     bool? isQuoting,
     String? quoteError,
     TxStatus? txStatus,
@@ -116,7 +126,7 @@ class SwapState {
       outputToken: outputToken ?? this.outputToken,
       inputAmount: inputAmount ?? this.inputAmount,
       jupiterQuote: jupiterQuote ?? this.jupiterQuote,
-      dflowOrder: dflowOrder ?? this.dflowOrder,
+      dflowQuote: dflowQuote ?? this.dflowQuote,
       isQuoting: isQuoting ?? this.isQuoting,
       quoteError: quoteError ?? this.quoteError,
       txStatus: txStatus ?? this.txStatus,
@@ -133,7 +143,7 @@ class SwapState {
     if (aggregator == SwapAggregator.jupiter) {
       return jupiterQuote?.outAmount;
     }
-    return dflowOrder?.expectedOutput;
+    return dflowQuote?.outAmount;
   }
 
   /// Get the price impact from whichever aggregator is active.
@@ -141,9 +151,9 @@ class SwapState {
     if (aggregator == SwapAggregator.jupiter) {
       return jupiterQuote?.priceImpactPct;
     }
-    return dflowOrder?.priceImpact;
+    return dflowQuote?.priceImpactPct;
   }
 
-  /// The base64 transaction to sign (DFlow only — Jupiter comes from swap endpoint).
-  String? get prebuiltTransaction => dflowOrder?.transaction;
+  /// The raw quote response for building a swap transaction (DFlow).
+  Map<String, dynamic>? get dflowQuoteRaw => dflowQuote?.raw;
 }

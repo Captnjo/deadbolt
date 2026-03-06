@@ -3,13 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/currency.dart';
 import '../../models/stake.dart';
 import '../../models/token.dart';
+import '../../providers/api_keys_provider.dart';
 import '../../providers/balance_provider.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/nft_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../shared/formatters.dart';
+import '../../src/rust/api/hardware.dart' as hw_bridge;
 import '../../theme/brand_theme.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -30,6 +33,8 @@ class DashboardScreen extends ConsumerWidget {
 
     final net = ref.watch(networkProvider);
     final balanceAsync = ref.watch(balanceProvider);
+    final currency = ref.watch(
+        apiKeysProvider.select((s) => s.displayCurrency));
 
     return Center(
       child: ConstrainedBox(
@@ -44,6 +49,7 @@ class DashboardScreen extends ConsumerWidget {
             walletName ?? 'Wallet',
             net,
             portfolio,
+            currency,
           ),
         ),
       ),
@@ -101,6 +107,7 @@ class DashboardScreen extends ConsumerWidget {
     String walletName,
     NetworkState net,
     PortfolioState portfolio,
+    DisplayCurrency currency,
   ) {
     // Check if active wallet is hardware
     final walletsList = ref.watch(walletListProvider).valueOrNull ?? [];
@@ -117,18 +124,15 @@ class DashboardScreen extends ConsumerWidget {
             hwConnected: ref.watch(hwDetectedProvider).valueOrNull ?? false),
         const SizedBox(height: 24),
         // Balance card
-        _balanceCard(portfolio, net.network),
+        _balanceCard(portfolio, net.network, currency),
         const SizedBox(height: 24),
         // Quick actions
         _quickActions(context),
-        const SizedBox(height: 8),
-        // Secondary actions
-        _secondaryActions(context),
         const SizedBox(height: 24),
         // Token list
-        _tokenList(portfolio),
+        _tokenList(portfolio, currency),
         // Staked LST section
-        _stakedLstSection(portfolio),
+        _stakedLstSection(portfolio, currency),
         // NFT gallery (mainnet only)
         if (net.network == SolanaNetwork.mainnet)
           _nftGallery(context, ref),
@@ -182,22 +186,69 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         if (showHwIndicator) ...[
-          Tooltip(
-            message: hwConnected ? 'Hardware wallet connected' : 'Hardware wallet',
-            child: Icon(Icons.usb, size: 18,
+          IconButton(
+            onPressed: () => _reconnectHardware(context, ref),
+            tooltip: hwConnected ? 'Hardware wallet connected' : 'Tap to connect hardware wallet',
+            icon: Icon(Icons.usb, size: 18,
                 color: hwConnected ? BrandColors.primary : BrandColors.textSecondary),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
           const SizedBox(width: 8),
         ],
         _networkBadge(net.network),
         const SizedBox(width: 8),
         IconButton(
-          onPressed: () => ref.read(balanceProvider.notifier).refresh(),
+          onPressed: () {
+            ref.read(balanceProvider.notifier).refresh();
+            ref.invalidate(hwDetectedProvider);
+          },
           icon: const Icon(Icons.refresh, size: 20),
           tooltip: 'Refresh',
         ),
       ],
     );
+  }
+
+  Future<void> _reconnectHardware(BuildContext context, WidgetRef ref) async {
+    try {
+      final ports = await hw_bridge.scanHardwareWallets();
+      if (ports.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('No hardware wallet detected'),
+                duration: Duration(seconds: 2)),
+          );
+        }
+        return;
+      }
+      // Auto-connect to first detected port using existing wallet name
+      final wallets = ref.read(walletListProvider).valueOrNull ?? [];
+      final activeAddr = ref.read(activeWalletProvider);
+      final hw = wallets.where((w) => w.address == activeAddr).firstOrNull;
+      await hw_bridge.connectHardwareWallet(
+        portPath: ports.first.path,
+        name: hw?.name ?? 'Hardware Wallet',
+      );
+      ref.invalidate(walletListProvider);
+      ref.invalidate(hwDetectedProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Hardware wallet connected'),
+              duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Connection failed: $e'),
+              duration: const Duration(seconds: 2)),
+        );
+      }
+    }
   }
 
   Widget _networkBadge(SolanaNetwork network) {
@@ -224,31 +275,25 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _balanceCard(PortfolioState portfolio, SolanaNetwork network) {
+  Widget _balanceCard(
+      PortfolioState portfolio, SolanaNetwork network, DisplayCurrency currency) {
+    final isMainnet = network == SolanaNetwork.mainnet && portfolio.solPrice > 0;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             Text(
-              '${Formatters.formatSol(portfolio.solBalance)} SOL',
+              isMainnet
+                  ? Formatters.formatCurrency(
+                      portfolio.totalPortfolioDisplay, currency)
+                  : '${Formatters.formatSol(portfolio.solBalance)} SOL',
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
             ),
-            if (network == SolanaNetwork.mainnet && portfolio.solPrice > 0) ...[
+            if (isMainnet) ...[
               const SizedBox(height: 4),
               Text(
-                Formatters.formatUsd(portfolio.solUsdValue),
-                style: const TextStyle(
-                    fontSize: 16, color: BrandColors.textSecondary),
-              ),
-            ],
-            if (network == SolanaNetwork.mainnet &&
-                portfolio.tokenBalances.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Total: ${Formatters.formatUsd(portfolio.totalPortfolioUsd)}',
+                '${Formatters.formatSol(portfolio.solBalance)} SOL',
                 style: const TextStyle(
                     fontSize: 14, color: BrandColors.textSecondary),
               ),
@@ -266,6 +311,7 @@ class DashboardScreen extends ConsumerWidget {
         _actionButton(context, Icons.arrow_upward, 'Send', '/send'),
         _actionButton(context, Icons.arrow_downward, 'Receive', '/receive'),
         _actionButton(context, Icons.swap_horiz, 'Swap', '/swap'),
+        _actionButton(context, Icons.image, 'Send NFT', '/send-nft'),
       ],
     );
   }
@@ -308,16 +354,16 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _tokenList(PortfolioState portfolio) {
-    if (portfolio.tokenBalances.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text('No token accounts found',
-              style: TextStyle(color: BrandColors.textSecondary, fontSize: 13)),
-        ),
-      );
-    }
+  Widget _tokenList(PortfolioState portfolio, DisplayCurrency currency) {
+    // Build a unified list with SOL + all SPL tokens, sorted by USD value
+    final solToken = TokenBalance(
+      definition: TokenDefinition.sol(),
+      rawAmount: portfolio.solBalance.toString(),
+      uiAmount: portfolio.solUiAmount,
+      usdPrice: portfolio.solPrice > 0 ? portfolio.solPrice : null,
+    );
+    final allTokens = [solToken, ...portfolio.tokenBalances];
+    allTokens.sort((a, b) => (b.usdValue ?? 0).compareTo(a.usdValue ?? 0));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,12 +374,13 @@ class DashboardScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w600,
                 color: BrandColors.textSecondary)),
         const SizedBox(height: 8),
-        ...portfolio.tokenBalances.map(_tokenRow),
+        ...allTokens.map((tb) => _tokenRow(tb, portfolio.exchangeRate, currency)),
       ],
     );
   }
 
-  Widget _tokenRow(TokenBalance tb) {
+  Widget _tokenRow(
+      TokenBalance tb, double exchangeRate, DisplayCurrency currency) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -371,7 +418,9 @@ class DashboardScreen extends ConsumerWidget {
               Text(Formatters.formatTokenAmount(tb.uiAmount),
                   style: const TextStyle(fontWeight: FontWeight.w500)),
               if (tb.usdValue != null)
-                Text(Formatters.formatUsd(tb.usdValue!),
+                Text(
+                    Formatters.formatCurrency(
+                        tb.usdValue! * exchangeRate, currency),
                     style: const TextStyle(
                         fontSize: 12, color: BrandColors.textSecondary)),
             ],
@@ -381,21 +430,9 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ─── Secondary Actions (1.8) ───
-
-  Widget _secondaryActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _actionButton(context, Icons.image, 'Send NFT', '/send-nft'),
-        _actionButton(context, Icons.contacts, 'Address Book', '/address-book'),
-      ],
-    );
-  }
-
   // ─── Staked LST Section (1.5) ───
 
-  Widget _stakedLstSection(PortfolioState portfolio) {
+  Widget _stakedLstSection(PortfolioState portfolio, DisplayCurrency currency) {
     final lstBalances = portfolio.tokenBalances
         .where((tb) => LstPools.mintSet.contains(tb.definition.mint))
         .toList();
@@ -446,7 +483,9 @@ class DashboardScreen extends ConsumerWidget {
                       Text(Formatters.formatTokenAmount(tb.uiAmount),
                           style: const TextStyle(fontWeight: FontWeight.w500)),
                       if (tb.usdValue != null)
-                        Text(Formatters.formatUsd(tb.usdValue!),
+                        Text(
+                            Formatters.formatCurrency(
+                                tb.usdValue! * portfolio.exchangeRate, currency),
                             style: const TextStyle(
                                 fontSize: 12, color: BrandColors.textSecondary)),
                     ],
