@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/currency.dart';
 import '../models/token.dart';
 import '../services/price_service.dart';
 import '../services/solana_rpc.dart';
 import '../services/token_registry.dart';
+import 'api_keys_provider.dart';
 import 'network_provider.dart';
 import 'wallet_provider.dart';
 
@@ -11,11 +13,13 @@ class PortfolioState {
   final int solBalance;
   final double solPrice;
   final List<TokenBalance> tokenBalances;
+  final double exchangeRate;
 
   const PortfolioState({
     this.solBalance = 0,
     this.solPrice = 0,
     this.tokenBalances = const [],
+    this.exchangeRate = 1.0,
   });
 
   double get solUiAmount => solBalance / 1e9;
@@ -27,6 +31,9 @@ class PortfolioState {
     }
     return total;
   }
+
+  double get totalPortfolioDisplay => totalPortfolioUsd * exchangeRate;
+  double get solDisplayValue => solUsdValue * exchangeRate;
 }
 
 class BalanceNotifier extends AsyncNotifier<PortfolioState> {
@@ -34,11 +41,13 @@ class BalanceNotifier extends AsyncNotifier<PortfolioState> {
   Future<PortfolioState> build() async {
     final address = ref.watch(activeWalletProvider);
     final net = ref.watch(networkProvider);
+    final currency = ref.watch(
+        apiKeysProvider.select((s) => s.displayCurrency));
     if (address == null) return const PortfolioState();
 
     final rpc = SolanaRpcClient(net.rpcUrl);
     try {
-      return await _fetch(rpc, address, net.network);
+      return await _fetch(rpc, address, net.network, currency);
     } finally {
       rpc.dispose();
     }
@@ -48,6 +57,7 @@ class BalanceNotifier extends AsyncNotifier<PortfolioState> {
     SolanaRpcClient rpc,
     String address,
     SolanaNetwork network,
+    DisplayCurrency currency,
   ) async {
     await TokenRegistry.instance.load();
 
@@ -55,12 +65,13 @@ class BalanceNotifier extends AsyncNotifier<PortfolioState> {
     final futures = await Future.wait([
       rpc.getBalance(address),
       rpc.getTokenAccountsByOwner(address),
-      _fetchSolPriceSafe(network),
+      _fetchSolPriceSafe(network, currency),
     ]);
 
     final solBalance = futures[0] as int;
     final tokenAccounts = futures[1] as List<TokenAccountEntry>;
-    final solPrice = futures[2] as double;
+    final priceResult = futures[2] as ({double usd, double display});
+    final solPrice = priceResult.usd;
 
     // Build token balances with prices
     final balances = <TokenBalance>[];
@@ -90,19 +101,37 @@ class BalanceNotifier extends AsyncNotifier<PortfolioState> {
       return bVal.compareTo(aVal);
     });
 
+    // Compute exchange rate from USD to display currency
+    final double exchangeRate;
+    if (currency == DisplayCurrency.sol) {
+      exchangeRate = solPrice > 0 ? 1.0 / solPrice : 1.0;
+    } else if (currency == DisplayCurrency.usd) {
+      exchangeRate = 1.0;
+    } else {
+      exchangeRate = priceResult.usd > 0
+          ? priceResult.display / priceResult.usd
+          : 1.0;
+    }
+
     return PortfolioState(
       solBalance: solBalance,
       solPrice: solPrice,
       tokenBalances: balances,
+      exchangeRate: exchangeRate,
     );
   }
 
-  Future<double> _fetchSolPriceSafe(SolanaNetwork network) async {
-    if (network != SolanaNetwork.mainnet) return 0;
+  Future<({double usd, double display})> _fetchSolPriceSafe(
+    SolanaNetwork network,
+    DisplayCurrency currency,
+  ) async {
+    if (network != SolanaNetwork.mainnet) {
+      return (usd: 0.0, display: 0.0);
+    }
     try {
-      return await fetchSolPrice();
+      return await fetchSolPrice(displayCode: currency.code);
     } catch (_) {
-      return 0;
+      return (usd: 0.0, display: 0.0);
     }
   }
 

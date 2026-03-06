@@ -1,3 +1,5 @@
+import '../models/currency.dart';
+
 class Formatters {
   Formatters._();
 
@@ -23,6 +25,15 @@ class Formatters {
     if (amount >= 1000000) return amount.toStringAsFixed(0);
     if (amount >= 1) return amount.toStringAsFixed(2);
     return amount.toStringAsFixed(6);
+  }
+
+  /// Format a value in the chosen display currency.
+  static String formatCurrency(double value, DisplayCurrency currency) {
+    final formatted = value.toStringAsFixed(currency.decimals);
+    if (currency.prefixed) {
+      return '${currency.symbol}$formatted';
+    }
+    return '$formatted ${currency.symbol}';
   }
 
   /// Shorten an address: ABCD...WXYZ.

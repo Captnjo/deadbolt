@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/currency.dart';
 import '../models/swap.dart';
 
 class ApiKeysState {
@@ -8,12 +9,14 @@ class ApiKeysState {
   final String dflowKey;
   final SwapAggregator defaultAggregator;
   final bool jitoMevProtection;
+  final DisplayCurrency displayCurrency;
 
   const ApiKeysState({
     this.jupiterKey = '',
     this.dflowKey = '',
-    this.defaultAggregator = SwapAggregator.jupiter,
+    this.defaultAggregator = SwapAggregator.dflow,
     this.jitoMevProtection = false,
+    this.displayCurrency = DisplayCurrency.usd,
   });
 
   ApiKeysState copyWith({
@@ -21,12 +24,14 @@ class ApiKeysState {
     String? dflowKey,
     SwapAggregator? defaultAggregator,
     bool? jitoMevProtection,
+    DisplayCurrency? displayCurrency,
   }) {
     return ApiKeysState(
       jupiterKey: jupiterKey ?? this.jupiterKey,
       dflowKey: dflowKey ?? this.dflowKey,
       defaultAggregator: defaultAggregator ?? this.defaultAggregator,
       jitoMevProtection: jitoMevProtection ?? this.jitoMevProtection,
+      displayCurrency: displayCurrency ?? this.displayCurrency,
     );
   }
 }
@@ -36,6 +41,7 @@ class ApiKeysNotifier extends Notifier<ApiKeysState> {
   static const _dflowKeyPref = 'dflow_api_key';
   static const _aggregatorPref = 'default_aggregator';
   static const _jitoMevPref = 'jito_mev_protection';
+  static const _currencyPref = 'display_currency';
 
   @override
   ApiKeysState build() {
@@ -48,10 +54,12 @@ class ApiKeysNotifier extends Notifier<ApiKeysState> {
     state = ApiKeysState(
       jupiterKey: prefs.getString(_jupiterKeyPref) ?? '',
       dflowKey: prefs.getString(_dflowKeyPref) ?? '',
-      defaultAggregator: prefs.getString(_aggregatorPref) == 'dflow'
-          ? SwapAggregator.dflow
-          : SwapAggregator.jupiter,
+      defaultAggregator: prefs.getString(_aggregatorPref) == 'jupiter'
+          ? SwapAggregator.jupiter
+          : SwapAggregator.dflow,
       jitoMevProtection: prefs.getBool(_jitoMevPref) ?? false,
+      displayCurrency: DisplayCurrency.fromCode(
+          prefs.getString(_currencyPref) ?? 'usd'),
     );
   }
 
@@ -77,6 +85,12 @@ class ApiKeysNotifier extends Notifier<ApiKeysState> {
     state = state.copyWith(jitoMevProtection: enabled);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_jitoMevPref, enabled);
+  }
+
+  Future<void> setDisplayCurrency(DisplayCurrency currency) async {
+    state = state.copyWith(displayCurrency: currency);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyPref, currency.code);
   }
 }
 
