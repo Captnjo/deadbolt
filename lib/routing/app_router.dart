@@ -16,6 +16,8 @@ import '../features/nft/send_nft_screen.dart';
 import '../features/address_book/address_book_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
+import '../features/lock/lock_screen.dart';
+import '../providers/auth_provider.dart';
 import '../providers/onboarding_provider.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -23,14 +25,28 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final needsOnboarding = ref.watch(needsOnboardingProvider);
+  final isLocked = ref.watch(authProvider.select((s) => s.isLocked));
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: needsOnboarding ? '/onboarding' : '/dashboard',
+    initialLocation: needsOnboarding
+        ? '/onboarding'
+        : isLocked
+            ? '/lock'
+            : '/dashboard',
     redirect: (context, state) {
-      final onOnboarding = state.uri.path == '/onboarding';
-      if (needsOnboarding && !onOnboarding) return '/onboarding';
-      if (!needsOnboarding && onOnboarding) return '/dashboard';
+      final path = state.uri.path;
+
+      // Onboarding takes priority (new user, no wallet yet)
+      if (needsOnboarding && path != '/onboarding') return '/onboarding';
+      if (!needsOnboarding && path == '/onboarding') {
+        return isLocked ? '/lock' : '/dashboard';
+      }
+
+      // Lock screen gate
+      if (isLocked && path != '/lock' && path != '/onboarding') return '/lock';
+      if (!isLocked && path == '/lock') return '/dashboard';
+
       return null;
     },
     routes: [
@@ -38,6 +54,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const OnboardingShell(),
+      ),
+      GoRoute(
+        path: '/lock',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LockScreen(),
       ),
       GoRoute(
         path: '/receive',
