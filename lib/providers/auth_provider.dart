@@ -52,6 +52,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
+    // Start locked if password is set
     final hasPassword = bridge.hasAppPassword();
     _loadTimeout();
     return AuthState(isLocked: hasPassword);
