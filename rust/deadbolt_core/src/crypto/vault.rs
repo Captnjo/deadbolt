@@ -171,6 +171,38 @@ pub fn generate_vault_key() -> Result<[u8; 32], DeadboltError> {
     Ok(key)
 }
 
+/// Hash a password for storage. Returns 48 bytes: [16-byte salt][32-byte derived key].
+pub fn hash_password(password: &[u8]) -> Result<Vec<u8>, DeadboltError> {
+    let mut salt = [0u8; 16];
+    getrandom::getrandom(&mut salt)
+        .map_err(|e| DeadboltError::VaultError(format!("RNG error: {e}")))?;
+
+    let mut key = derive_key(password, &salt, KdfStrength::Desktop)?;
+
+    let mut result = Vec::with_capacity(48);
+    result.extend_from_slice(&salt);
+    result.extend_from_slice(&key);
+
+    key.zeroize();
+    Ok(result)
+}
+
+/// Verify a password against a stored hash (48 bytes: salt + derived key).
+pub fn verify_password(password: &[u8], stored_hash: &[u8]) -> Result<bool, DeadboltError> {
+    if stored_hash.len() != 48 {
+        return Err(DeadboltError::VaultError("Invalid password hash length".into()));
+    }
+
+    let salt = &stored_hash[..16];
+    let expected_key = &stored_hash[16..48];
+
+    let mut derived = derive_key(password, salt, KdfStrength::Desktop)?;
+    let matches = derived == *expected_key;
+    derived.zeroize();
+
+    Ok(matches)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -306,5 +338,30 @@ mod tests {
         let key1 = derive_key(password, &[0xAA; 16], KdfStrength::Mobile).unwrap();
         let key2 = derive_key(password, &[0xBB; 16], KdfStrength::Mobile).unwrap();
         assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_hash_and_verify_password() {
+        let password = b"correct-horse-battery-staple";
+        let hash = hash_password(password).unwrap();
+        assert_eq!(hash.len(), 48);
+        assert!(verify_password(password, &hash).unwrap());
+        assert!(!verify_password(b"wrong-password", &hash).unwrap());
+    }
+
+    #[test]
+    fn test_hash_password_different_salts() {
+        let password = b"same-password";
+        let hash1 = hash_password(password).unwrap();
+        let hash2 = hash_password(password).unwrap();
+        assert_ne!(hash1, hash2);
+        assert!(verify_password(password, &hash1).unwrap());
+        assert!(verify_password(password, &hash2).unwrap());
+    }
+
+    #[test]
+    fn test_verify_password_invalid_hash_length() {
+        let result = verify_password(b"password", &[0u8; 10]);
+        assert!(result.is_err());
     }
 }
