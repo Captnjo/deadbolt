@@ -1,5 +1,6 @@
 use std::sync::{OnceLock, RwLock};
 
+use base64::Engine;
 use deadbolt_core::models::WalletManager;
 
 use super::types::{CreateWalletResult, WalletInfoDto};
@@ -173,4 +174,69 @@ pub fn set_helius_api_key(key: String) -> Result<(), String> {
     let config = mgr.config_mut();
     config.helius_api_key = key;
     config.save().map_err(|e| e.to_string())
+}
+
+/// Check whether the user has set an app password.
+#[flutter_rust_bridge::frb(sync)]
+pub fn has_app_password() -> Result<bool, String> {
+    let mgr = manager().read().map_err(|e| e.to_string())?;
+    Ok(mgr.config().has_password())
+}
+
+/// Set the app password (first-time setup or overwrite).
+pub fn set_app_password(password: String) -> Result<(), String> {
+    use deadbolt_core::crypto::vault;
+
+    let hash_bytes = vault::hash_password(password.as_bytes())
+        .map_err(|e| e.to_string())?;
+    let hash_b64 = base64::engine::general_purpose::STANDARD.encode(&hash_bytes);
+
+    let mut mgr = manager().write().map_err(|e| e.to_string())?;
+    mgr.config_mut().password_hash = Some(hash_b64);
+    mgr.config_mut().save().map_err(|e| e.to_string())
+}
+
+/// Verify the app password. Returns true if correct, false if wrong.
+pub fn verify_app_password(password: String) -> Result<bool, String> {
+    use deadbolt_core::crypto::vault;
+
+    let mgr = manager().read().map_err(|e| e.to_string())?;
+    let hash_b64 = mgr.config().password_hash.as_ref()
+        .ok_or("No password set")?;
+
+    let hash_bytes = base64::engine::general_purpose::STANDARD
+        .decode(hash_b64)
+        .map_err(|e| format!("Invalid stored hash: {e}"))?;
+
+    vault::verify_password(password.as_bytes(), &hash_bytes)
+        .map_err(|e| e.to_string())
+}
+
+/// Change the app password. Verifies current password first.
+pub fn change_app_password(current: String, new_password: String) -> Result<(), String> {
+    use deadbolt_core::crypto::vault;
+
+    // Verify current password
+    {
+        let mgr = manager().read().map_err(|e| e.to_string())?;
+        let hash_b64 = mgr.config().password_hash.as_ref()
+            .ok_or("No password set")?;
+        let hash_bytes = base64::engine::general_purpose::STANDARD
+            .decode(hash_b64)
+            .map_err(|e| format!("Invalid stored hash: {e}"))?;
+        let valid = vault::verify_password(current.as_bytes(), &hash_bytes)
+            .map_err(|e| e.to_string())?;
+        if !valid {
+            return Err("Current password is incorrect".into());
+        }
+    }
+
+    // Set new password
+    let new_hash = vault::hash_password(new_password.as_bytes())
+        .map_err(|e| e.to_string())?;
+    let hash_b64 = base64::engine::general_purpose::STANDARD.encode(&new_hash);
+
+    let mut mgr = manager().write().map_err(|e| e.to_string())?;
+    mgr.config_mut().password_hash = Some(hash_b64);
+    mgr.config_mut().save().map_err(|e| e.to_string())
 }

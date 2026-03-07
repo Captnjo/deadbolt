@@ -94,3 +94,23 @@ String getHeliusApiKey() =>
 /// Set the Helius API key.
 Future<void> setHeliusApiKey({required String key}) =>
     RustLib.instance.api.crateApiWalletSetHeliusApiKey(key: key);
+
+/// Check whether the user has set an app password.
+bool hasAppPassword() => RustLib.instance.api.crateApiWalletHasAppPassword();
+
+/// Set the app password (first-time setup or overwrite).
+Future<void> setAppPassword({required String password}) =>
+    RustLib.instance.api.crateApiWalletSetAppPassword(password: password);
+
+/// Verify the app password. Returns true if correct, false if wrong.
+Future<bool> verifyAppPassword({required String password}) =>
+    RustLib.instance.api.crateApiWalletVerifyAppPassword(password: password);
+
+/// Change the app password. Verifies current password first.
+Future<void> changeAppPassword({
+  required String current,
+  required String newPassword,
+}) => RustLib.instance.api.crateApiWalletChangeAppPassword(
+  current: current,
+  newPassword: newPassword,
+);
