@@ -25,6 +25,7 @@ enum OnboardingStep {
   importPhrase,
   detectDevice,
   connectDevice,
+  setPassword,
   complete,
 }
 
@@ -101,6 +102,7 @@ class OnboardingState {
           OnboardingStep.walletName,
           OnboardingStep.displayMnemonic,
           OnboardingStep.verifyBackup,
+          OnboardingStep.setPassword,
           OnboardingStep.complete,
         ];
       case OnboardingPath.import_:
@@ -108,6 +110,7 @@ class OnboardingState {
           OnboardingStep.welcome,
           OnboardingStep.walletName,
           OnboardingStep.importPhrase,
+          OnboardingStep.setPassword,
           OnboardingStep.complete,
         ];
       case OnboardingPath.hardware:
@@ -116,6 +119,7 @@ class OnboardingState {
           OnboardingStep.walletName,
           OnboardingStep.detectDevice,
           OnboardingStep.connectDevice,
+          OnboardingStep.setPassword,
           OnboardingStep.complete,
         ];
     }
@@ -221,7 +225,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
   }
 
   void advanceFromVerify() {
-    state = state.copyWith(step: OnboardingStep.complete);
+    state = state.copyWith(step: OnboardingStep.setPassword);
   }
 
   Future<void> importWallet(List<String> words) async {
@@ -235,7 +239,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         loading: false,
         createdWallet: wallet,
         mnemonic: words,
-        step: OnboardingStep.complete,
+        step: OnboardingStep.setPassword,
       );
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
@@ -259,6 +263,19 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         name: state.walletName.trim(),
       );
       state = state.copyWith(loading: false, createdWallet: wallet);
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), loading: false);
+    }
+  }
+
+  Future<void> setPassword(String password) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      await bridge.setAppPassword(password: password);
+      state = state.copyWith(
+        loading: false,
+        step: OnboardingStep.complete,
+      );
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
     }
@@ -296,7 +313,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         state = state.copyWith(step: OnboardingStep.walletName);
       case OnboardingStep.connectDevice:
         state = state.copyWith(step: OnboardingStep.detectDevice);
-      case OnboardingStep.complete:
+      case OnboardingStep.setPassword:
         if (path == OnboardingPath.create) {
           state = state.copyWith(step: OnboardingStep.verifyBackup);
         } else if (path == OnboardingPath.import_) {
@@ -304,6 +321,8 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         } else {
           state = state.copyWith(step: OnboardingStep.connectDevice);
         }
+      case OnboardingStep.complete:
+        state = state.copyWith(step: OnboardingStep.setPassword);
     }
   }
 }

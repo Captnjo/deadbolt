@@ -11,6 +11,7 @@ import 'steps/verify_backup_step.dart';
 import 'steps/import_phrase_step.dart';
 import 'steps/detect_device_step.dart';
 import 'steps/connect_device_step.dart';
+import 'steps/set_password_step.dart';
 import 'steps/complete_step.dart';
 
 class OnboardingShell extends ConsumerWidget {
@@ -106,6 +107,7 @@ class OnboardingShell extends ConsumerWidget {
       OnboardingStep.importPhrase => const ImportPhraseStep(),
       OnboardingStep.detectDevice => const DetectDeviceStep(),
       OnboardingStep.connectDevice => const ConnectDeviceStep(),
+      OnboardingStep.setPassword => const SetPasswordStep(),
       OnboardingStep.complete => const CompleteStep(),
     };
   }
