@@ -6,6 +6,7 @@ import '../../models/currency.dart';
 import '../../models/swap.dart';
 import '../../models/token.dart';
 import '../../providers/api_keys_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../src/rust/api/wallet.dart' as bridge;
@@ -115,6 +116,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onChanged: (value) {
             ref.read(apiKeysProvider.notifier).setJitoMevProtection(value);
           },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Auto-Lock', style: TextStyle(fontSize: 14)),
+            DropdownButton<AutoLockTimeout>(
+              value: ref.watch(authProvider).autoLockTimeout,
+              underline: const SizedBox.shrink(),
+              items: AutoLockTimeout.values
+                  .map((t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(t.label,
+                            style: const TextStyle(fontSize: 14)),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  ref.read(authProvider.notifier).setAutoLockTimeout(value);
+                }
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => _changePassword(context),
+          icon: const Icon(Icons.key, size: 18),
+          label: const Text('Change Password'),
         ),
 
         const SizedBox(height: 32),
@@ -269,6 +299,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _changePassword(BuildContext context) async {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentController,
+              obscureText: true,
+              decoration:
+                  const InputDecoration(labelText: 'Current Password'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newController,
+              obscureText: true,
+              decoration:
+                  const InputDecoration(labelText: 'New Password'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmController,
+              obscureText: true,
+              decoration:
+                  const InputDecoration(labelText: 'Confirm New Password'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final current = currentController.text;
+              final newPw = newController.text;
+              final confirm = confirmController.text;
+
+              if (newPw.length < 8) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content:
+                          Text('New password must be at least 8 characters')),
+                );
+                return;
+              }
+              if (newPw != confirm) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('New passwords do not match')),
+                );
+                return;
+              }
+
+              try {
+                await bridge.changeAppPassword(
+                  current: current,
+                  newPassword: newPw,
+                );
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              }
+            },
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Password changed'),
+            duration: Duration(seconds: 1)),
+      );
+    }
+
+    currentController.dispose();
+    newController.dispose();
+    confirmController.dispose();
   }
 
   void _saveJupiterKey() {
