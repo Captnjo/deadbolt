@@ -37,6 +37,11 @@ pub struct AppConfig {
     /// Helius API key for RPC access.
     #[serde(default)]
     pub helius_api_key: String,
+
+    /// Scrypt-derived password hash (base64-encoded, 48 bytes: salt + key).
+    /// None = no password set (fresh install).
+    #[serde(default)]
+    pub password_hash: Option<String>,
 }
 
 fn default_network() -> String {
@@ -100,6 +105,7 @@ impl Default for AppConfig {
             guardrails: GuardrailsConfig::default(),
             onboarding_completed: false,
             helius_api_key: String::new(),
+            password_hash: None,
         }
     }
 }
@@ -168,6 +174,11 @@ impl AppConfig {
             .or_else(|_| std::env::var("USERPROFILE"))
             .unwrap_or_else(|_| ".".to_string());
         PathBuf::from(home).join(".deadbolt")
+    }
+
+    /// Check whether the user has set a password.
+    pub fn has_password(&self) -> bool {
+        self.password_hash.is_some()
     }
 }
 
@@ -295,5 +306,23 @@ mod tests {
         assert!(json.contains("onboardingCompleted"));
         let parsed: AppConfig = serde_json::from_str(&json).unwrap();
         assert!(parsed.onboarding_completed);
+    }
+
+    #[test]
+    fn test_password_hash_backwards_compat() {
+        let json = r#"{"wallets":[],"network":"mainnet"}"#;
+        let config: AppConfig = serde_json::from_str(json).unwrap();
+        assert!(config.password_hash.is_none());
+        assert!(!config.has_password());
+    }
+
+    #[test]
+    fn test_password_hash_roundtrip() {
+        let mut config = AppConfig::default();
+        config.password_hash = Some("dGVzdA==".to_string());
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("passwordHash"));
+        let parsed: AppConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.password_hash, Some("dGVzdA==".to_string()));
     }
 }
