@@ -134,7 +134,63 @@ class WalletListScreen extends ConsumerWidget {
     }
   }
 
+  Future<bool> _verifyPassword(BuildContext context) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter Password'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Password'),
+          onSubmitted: (_) async {
+            try {
+              final valid = await bridge.verifyAppPassword(
+                password: controller.text,
+              );
+              if (ctx.mounted) Navigator.pop(ctx, valid);
+            } catch (_) {
+              if (ctx.mounted) Navigator.pop(ctx, false);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final valid = await bridge.verifyAppPassword(
+                  password: controller.text,
+                );
+                if (ctx.mounted) Navigator.pop(ctx, valid);
+              } catch (_) {
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              }
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result == true;
+  }
+
   Future<void> _showMnemonic(BuildContext context, String address) async {
+    final verified = await _verifyPassword(context);
+    if (!verified) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incorrect password')),
+        );
+      }
+      return;
+    }
     try {
       final words = await bridge.getMnemonic(address: address);
       if (!context.mounted) return;
