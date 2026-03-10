@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/send.dart';
 import '../../models/token.dart';
@@ -771,9 +772,6 @@ class _ConfirmingStep extends ConsumerWidget {
     final isConfirmed = sendState.txStatus == TxStatus.confirmed;
     final isFailed = sendState.txStatus == TxStatus.failed;
 
-    final suffix = network == SolanaNetwork.devnet ? '?cluster=devnet' : '';
-    final explorerUrl = 'https://orb.helius.dev/tx/$signature$suffix';
-
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -805,48 +803,6 @@ class _ConfirmingStep extends ConsumerWidget {
           // Status tracker
           _statusTracker(status, isConfirmed),
           const SizedBox(height: 24),
-          // Signature
-          if (signature.isNotEmpty) ...[
-            const Text('Signature',
-                style: TextStyle(
-                    color: BrandColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: SelectableText(
-                    Formatters.shortAddress(signature),
-                    style: const TextStyle(
-                        fontFamily: 'monospace', fontSize: 13),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 16),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: signature));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Signature copied'),
-                          duration: Duration(seconds: 1)),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-          // Explorer link
-          if (signature.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SelectableText(
-              explorerUrl,
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: BrandColors.primary,
-                  fontFamily: 'monospace'),
-            ),
-          ],
           if (sendState.errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(sendState.errorMessage!,
@@ -854,14 +810,34 @@ class _ConfirmingStep extends ConsumerWidget {
                 textAlign: TextAlign.center),
           ],
           const SizedBox(height: 24),
-          // Done button
           if (isConfirmed || isFailed)
-            ElevatedButton(
-              onPressed: () {
-                ref.read(sendProvider.notifier).reset();
-                context.go('/dashboard');
-              },
-              child: const Text('Done'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (signature.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final suffix = network == SolanaNetwork.devnet
+                          ? '?cluster=devnet'
+                          : '';
+                      launchUrl(
+                        Uri.parse(
+                            'https://orb.helius.dev/tx/$signature$suffix'),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    icon: const Text('View'),
+                    label: const Icon(Icons.open_in_new, size: 16),
+                  ),
+                if (signature.isNotEmpty) const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.read(sendProvider.notifier).reset();
+                    context.go('/dashboard');
+                  },
+                  child: const Text('Done'),
+                ),
+              ],
             ),
         ],
       ),

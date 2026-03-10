@@ -17,6 +17,7 @@ import '../features/address_book/address_book_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
 import '../features/lock/lock_screen.dart';
+import '../features/lock/setup_password_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/onboarding_provider.dart';
 
@@ -25,26 +26,44 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final needsOnboarding = ref.watch(needsOnboardingProvider);
-  final isLocked = ref.watch(authProvider.select((s) => s.isLocked));
+  final authState = ref.watch(authProvider);
+  final isLocked = authState.isLocked;
+  final needsPasswordSetup = authState.needsPasswordSetup;
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: needsOnboarding
         ? '/onboarding'
-        : isLocked
-            ? '/lock'
-            : '/dashboard',
+        : needsPasswordSetup
+            ? '/setup-password'
+            : isLocked
+                ? '/lock'
+                : '/dashboard',
     redirect: (context, state) {
       final path = state.uri.path;
 
       // Onboarding takes priority (new user, no wallet yet)
       if (needsOnboarding && path != '/onboarding') return '/onboarding';
       if (!needsOnboarding && path == '/onboarding') {
+        return needsPasswordSetup
+            ? '/setup-password'
+            : isLocked
+                ? '/lock'
+                : '/dashboard';
+      }
+
+      // Password setup gate (existing wallets without password)
+      if (needsPasswordSetup && path != '/setup-password' && path != '/onboarding') {
+        return '/setup-password';
+      }
+      if (!needsPasswordSetup && path == '/setup-password') {
         return isLocked ? '/lock' : '/dashboard';
       }
 
       // Lock screen gate
-      if (isLocked && path != '/lock' && path != '/onboarding') return '/lock';
+      if (isLocked && path != '/lock' && path != '/onboarding' && path != '/setup-password') {
+        return '/lock';
+      }
       if (!isLocked && path == '/lock') return '/dashboard';
 
       return null;
@@ -59,6 +78,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/lock',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const LockScreen(),
+      ),
+      GoRoute(
+        path: '/setup-password',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SetupPasswordScreen(),
       ),
       GoRoute(
         path: '/receive',

@@ -14,6 +14,7 @@ class LockScreen extends ConsumerStatefulWidget {
 
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
+  final _focusNode = FocusNode();
   bool _showPasswordField = false;
   bool _obscure = true;
   bool _unlocking = false;
@@ -22,6 +23,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   @override
   void dispose() {
     _passwordController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -64,13 +66,18 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
                   if (!_showPasswordField) ...[
                     ElevatedButton(
-                      onPressed: () =>
-                          setState(() => _showPasswordField = true),
+                      onPressed: () {
+                        setState(() => _showPasswordField = true);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _focusNode.requestFocus();
+                        });
+                      },
                       child: const Text('Unlock Wallet'),
                     ),
                   ] else ...[
                     TextField(
                       controller: _passwordController,
+                      focusNode: _focusNode,
                       obscureText: _obscure,
                       autofocus: true,
                       decoration: InputDecoration(

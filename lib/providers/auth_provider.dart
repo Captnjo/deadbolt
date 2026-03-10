@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../src/rust/api/wallet.dart' as bridge;
-import 'wallet_provider.dart';
 
 /// Auto-lock timeout options.
 enum AutoLockTimeout {
@@ -30,16 +29,23 @@ enum AutoLockTimeout {
 
 class AuthState {
   final bool isLocked;
+  final bool needsPasswordSetup;
   final AutoLockTimeout autoLockTimeout;
 
   const AuthState({
     this.isLocked = true,
+    this.needsPasswordSetup = false,
     this.autoLockTimeout = AutoLockTimeout.fifteenMin,
   });
 
-  AuthState copyWith({bool? isLocked, AutoLockTimeout? autoLockTimeout}) {
+  AuthState copyWith({
+    bool? isLocked,
+    bool? needsPasswordSetup,
+    AutoLockTimeout? autoLockTimeout,
+  }) {
     return AuthState(
       isLocked: isLocked ?? this.isLocked,
+      needsPasswordSetup: needsPasswordSetup ?? this.needsPasswordSetup,
       autoLockTimeout: autoLockTimeout ?? this.autoLockTimeout,
     );
   }
@@ -52,10 +58,14 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    // Start locked if password is set
     final hasPassword = bridge.hasAppPassword();
     _loadTimeout();
-    return AuthState(isLocked: hasPassword);
+    // If no password set but wallets exist, prompt setup
+    // If password set, start locked
+    return AuthState(
+      isLocked: hasPassword,
+      needsPasswordSetup: !hasPassword,
+    );
   }
 
   Future<void> _loadTimeout() async {
@@ -79,10 +89,9 @@ class AuthNotifier extends Notifier<AuthState> {
     _inactivityTimer = Timer(duration, lock);
   }
 
-  /// Lock the wallet. Zeroizes seeds and navigates to lock screen.
+  /// Lock the wallet. Shows lock screen (UI gate).
   void lock() {
     _inactivityTimer?.cancel();
-    bridge.lockAllWallets();
     state = state.copyWith(isLocked: true);
   }
 
@@ -92,18 +101,18 @@ class AuthNotifier extends Notifier<AuthState> {
       final valid = await bridge.verifyAppPassword(password: password);
       if (!valid) return 'Incorrect password';
 
-      // Unlock the active wallet's session
-      final address = ref.read(activeWalletProvider);
-      if (address != null) {
-        await bridge.unlockWallet(address: address);
-      }
-
       state = state.copyWith(isLocked: false);
       _resetInactivityTimer();
       return null;
     } catch (e) {
       return e.toString();
     }
+  }
+
+  /// Called after the user sets their password for the first time (existing wallets).
+  void completePasswordSetup() {
+    state = state.copyWith(needsPasswordSetup: false, isLocked: false);
+    _resetInactivityTimer();
   }
 
   Future<void> setAutoLockTimeout(AutoLockTimeout timeout) async {

@@ -309,7 +309,10 @@ class _WalletTile extends StatelessWidget {
           child: Text(emoji, style: const TextStyle(fontSize: 20)),
         ),
         title: Text(wallet.name),
-        subtitle: Row(
+        subtitle: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               _shortAddress(wallet.address),
@@ -318,7 +321,6 @@ class _WalletTile extends StatelessWidget {
                 color: BrandColors.textSecondary,
               ),
             ),
-            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -330,8 +332,7 @@ class _WalletTile extends StatelessWidget {
                 style: const TextStyle(fontSize: 10, color: BrandColors.textSecondary),
               ),
             ),
-            if (isActive) ...[
-              const SizedBox(width: 8),
+            if (isActive)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -343,7 +344,6 @@ class _WalletTile extends StatelessWidget {
                   style: TextStyle(fontSize: 10, color: BrandColors.primary),
                 ),
               ),
-            ],
           ],
         ),
         trailing: Row(
