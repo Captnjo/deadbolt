@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../lock/auth_challenge_dialog.dart';
 import '../../providers/wallet_emoji_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../shared/widgets/emoji_picker_dialog.dart';
@@ -135,6 +136,10 @@ class WalletListScreen extends ConsumerWidget {
   }
 
   Future<void> _showMnemonic(BuildContext context, String address) async {
+    // Auth gate: require password before revealing recovery phrase
+    final authenticated = await showAuthChallengeDialog(context);
+    if (!authenticated || !context.mounted) return;
+
     try {
       final words = await bridge.getMnemonic(address: address);
       if (!context.mounted) return;
@@ -144,7 +149,21 @@ class WalletListScreen extends ConsumerWidget {
           title: const Text('Recovery Phrase'),
           content: SizedBox(
             width: 400,
-            child: MnemonicGrid(words: words),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Never share your recovery phrase with anyone. '
+                  'Anyone with these words can access your funds.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: BrandColors.warning,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                MnemonicGrid(words: words),
+              ],
+            ),
           ),
           actions: [
             TextButton.icon(
@@ -255,11 +274,14 @@ class _WalletTile extends StatelessWidget {
         title: Text(wallet.name),
         subtitle: Row(
           children: [
-            Text(
-              _shortAddress(wallet.address),
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                color: BrandColors.textSecondary,
+            Flexible(
+              child: Text(
+                _shortAddress(wallet.address),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: BrandColors.textSecondary,
+                ),
               ),
             ),
             const SizedBox(width: 8),

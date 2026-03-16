@@ -38,29 +38,29 @@ class _LockScreenState extends ConsumerState<LockScreen>
     super.initState();
     _shakeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 200),
     );
     _shakeAnimation = TweenSequence<Offset>([
       TweenSequenceItem(
-        tween: Tween(begin: Offset.zero, end: const Offset(0.05, 0)),
+        tween: Tween(begin: Offset.zero, end: const Offset(0.02, 0)),
         weight: 1,
       ),
       TweenSequenceItem(
         tween: Tween(
-          begin: const Offset(0.05, 0),
-          end: const Offset(-0.05, 0),
+          begin: const Offset(0.02, 0),
+          end: const Offset(-0.02, 0),
         ),
         weight: 2,
       ),
       TweenSequenceItem(
         tween: Tween(
-          begin: const Offset(-0.05, 0),
-          end: const Offset(0.05, 0),
+          begin: const Offset(-0.02, 0),
+          end: const Offset(0.02, 0),
         ),
         weight: 2,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.05, 0), end: Offset.zero),
+        tween: Tween(begin: const Offset(0.02, 0), end: Offset.zero),
         weight: 1,
       ),
     ]).animate(CurvedAnimation(
@@ -84,14 +84,6 @@ class _LockScreenState extends ConsumerState<LockScreen>
     final password = _passwordController.text;
     if (password.isEmpty) return;
 
-    // Check escalating delay based on current failed attempts
-    final authState = ref.read(authProvider);
-    final delay = AuthNotifier.delayForAttempt(authState.failedAttempts);
-    if (delay > 0) {
-      _startCountdown(delay);
-      return;
-    }
-
     // Begin loading
     setState(() {
       _isLoading = true;
@@ -105,6 +97,14 @@ class _LockScreenState extends ConsumerState<LockScreen>
       // Wrong password: record attempt, trigger shake + flash
       ref.read(authProvider.notifier).recordFailedAttempt();
       _shakeController.forward(from: 0);
+
+      // Start escalating delay countdown for the NEXT attempt
+      final updatedState = ref.read(authProvider);
+      final delay = AuthNotifier.delayForAttempt(updatedState.failedAttempts);
+      if (delay > 0) {
+        _startCountdown(delay);
+      }
+
       setState(() {
         _errorMessage = 'Incorrect password';
         _flashError = true;
@@ -161,7 +161,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                   height: 80,
                   color: Colors.white,
                   colorBlendMode: BlendMode.srcIn,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, __, _) => const Icon(
                     Icons.lock,
                     size: 64,
                     color: BrandColors.primary,
