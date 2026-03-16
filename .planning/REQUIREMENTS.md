@@ -62,8 +62,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **INFR-03**: ESP32 seed stored encrypted in NVS (not plaintext)
 - [ ] **INFR-04**: Guardrail state (whitelists) persisted to disk, survives app restart
 - [ ] **INFR-05**: Axum server migrated to 0.8 route syntax
-- [ ] **INFR-06**: Bearer token comparison uses constant-time equality (prevent timing attack)
-- [ ] **INFR-07**: Zeroization audit: all key material on heap (Box/SecretVec), no stack copies
+- [x] **INFR-06**: Bearer token comparison uses constant-time equality (prevent timing attack)
+- [x] **INFR-07**: Zeroization audit: all key material on heap (Box/SecretVec), no stack copies
 - [ ] **INFR-08**: Axum server properly shuts down on app close (no orphaned port)
 
 ### Navigation & Settings
@@ -177,8 +177,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-03 | Phase 5 | Pending |
 | INFR-04 | Phase 4 | Pending |
 | INFR-05 | Phase 2 | Pending |
-| INFR-06 | Phase 1 | Pending |
-| INFR-07 | Phase 1 | Pending |
+| INFR-06 | Phase 1 | Complete |
+| INFR-07 | Phase 1 | Complete |
 | INFR-08 | Phase 2 | Pending |
 | NAVS-01 | Phase 6 | Pending |
 | NAVS-02 | Phase 6 | Pending |

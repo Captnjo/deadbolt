@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Attempting to reveal the mnemonic, create/delete an API key, or approve a transaction without unlocking shows an auth challenge
   4. User can change their app password from settings and the new password works on next lock/unlock
   5. Rust vault's AtomicBool `locked` flag gates all in-flight signing calls; a call in-progress at lock time returns WalletLocked error
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — Rust auth module (password hash + AtomicBool lock gate) and FFI bridge
@@ -106,7 +106,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth System | 0/5 | Planning complete | - |
+| 1. Auth System | 1/5 | In Progress|  |
 | 2. Agent API Bridge | 0/TBD | Not started | - |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |

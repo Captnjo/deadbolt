@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-03-16T09:41:36.297Z"
+stopped_at: Completed 01-auth-system 01-02-PLAN.md
+last_updated: "2026-03-16T10:41:40.439Z"
 last_activity: 2026-03-16 — Roadmap created; all 53 v1 requirements mapped to 6 phases
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 5
+  completed_plans: 1
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-auth-system P02 | 8 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - Roadmap: Phase 5 (ESP32) is independent; can run in parallel with Phases 1-4
 - Roadmap: INFR-06 (constant-time bearer token) and INFR-07 (zeroization audit) assigned to Phase 1 — security hardening best addressed with the vault/auth work
 - Roadmap: INFR-05 (axum 0.8 migration) and INFR-08 (server shutdown) assigned to Phase 2 — belongs with the server exposure work
+- [Phase 01-auth-system]: Use Zeroizing::new(plaintext) wrapper so plaintext is auto-zeroed on drop including on error paths
+- [Phase 01-auth-system]: constant_time_eq pattern established for all token/secret comparisons in agent API
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T09:41:36.290Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-auth-system/01-CONTEXT.md
+Last session: 2026-03-16T10:41:40.436Z
+Stopped at: Completed 01-auth-system 01-02-PLAN.md
+Resume file: None
