@@ -31,7 +31,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Attempting to reveal the mnemonic, create/delete an API key, or approve a transaction without unlocking shows an auth challenge
   4. User can change their app password from settings and the new password works on next lock/unlock
   5. Rust vault's AtomicBool `locked` flag gates all in-flight signing calls; a call in-progress at lock time returns WalletLocked error
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Rust auth module (password hash + AtomicBool lock gate) and FFI bridge
+- [ ] 01-02-PLAN.md — INFR-06 constant-time token comparison + INFR-07 zeroization audit
+- [ ] 01-03-PLAN.md — Flutter AuthProvider, lock screen UI, GoRouter redirect, idle timer
+- [ ] 01-04-PLAN.md — Onboarding password step + password strength meter
+- [ ] 01-05-PLAN.md — Auth challenge dialog + Settings security section + end-to-end verification
 
 ### Phase 2: Agent API Bridge
 **Goal**: The embedded axum HTTP server is running, connected to Flutter via FRB, and AI agents can authenticate and query wallet data
@@ -99,7 +106,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth System | 0/TBD | Not started | - |
+| 1. Auth System | 0/5 | Planning complete | - |
 | 2. Agent API Bridge | 0/TBD | Not started | - |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
@@ -108,4 +115,4 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-16 after initial creation*
+*Last updated: 2026-03-16 after Phase 1 planning complete*
