@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Completed 01-auth-system 01-02-PLAN.md
-last_updated: "2026-03-16T10:41:40.439Z"
-last_activity: 2026-03-16 — Roadmap created; all 53 v1 requirements mapped to 6 phases
+status: executing
+stopped_at: Completed 01-auth-system 01-01-PLAN.md
+last_updated: "2026-03-16T10:52:10Z"
+last_activity: 2026-03-16 — Completed Phase 1 Plan 1: Rust auth module + FFI bridge
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
   completed_plans: 1
-  percent: 0
+  percent: 4
 ---
 
 # Project State
@@ -26,31 +26,30 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 1 of 6 (Auth System)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-16 — Roadmap created; all 53 v1 requirements mapped to 6 phases
+Plan: 1 of 5 in current phase (01-01-PLAN.md COMPLETE)
+Status: Executing
+Last activity: 2026-03-16 — Completed 01-01: Rust auth module + FFI bridge (scrypt, Keychain, AtomicBool lock gate)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 4%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 19 min
+- Total execution time: 0.32 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-auth-system | 1 of 5 | 19 min | 19 min |
 
 **Recent Trend:**
-- Last 5 plans: none yet
-- Trend: —
+- Last 5 plans: 01-01 (19 min)
+- Trend: Baseline established
 
 *Updated after each plan completion*
-| Phase 01-auth-system P02 | 8 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +63,10 @@ Recent decisions affecting current work:
 - Roadmap: INFR-05 (axum 0.8 migration) and INFR-08 (server shutdown) assigned to Phase 2 — belongs with the server exposure work
 - [Phase 01-auth-system]: Use Zeroizing::new(plaintext) wrapper so plaintext is auto-zeroed on drop including on error paths
 - [Phase 01-auth-system]: constant_time_eq pattern established for all token/secret comparisons in agent API
+- [01-01]: 48-byte Keychain entry [16B salt || 32B scrypt-Desktop hash] for app password; avoids separate salt entry
+- [01-01]: APP_LOCKED starts true; unlock_app loads Keychain wallets into session then clears lock flag
+- [01-01]: FRB bridge scrypt ops are pub async, bool checks are frb(sync) pub fn — prevents Flutter main thread blocking
+- [01-01]: Test-specific Keychain accounts (process::id() suffix) isolate tests from real app_password_hash entry
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T10:41:40.436Z
-Stopped at: Completed 01-auth-system 01-02-PLAN.md
-Resume file: None
+Last session: 2026-03-16T10:52:10Z
+Stopped at: Completed 01-auth-system 01-01-PLAN.md
+Resume file: .planning/phases/01-auth-system/01-01-SUMMARY.md

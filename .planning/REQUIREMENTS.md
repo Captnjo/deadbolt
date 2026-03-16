@@ -9,14 +9,14 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Authentication
 
-- [ ] **AUTH-01**: User must enter app password to unlock wallet on launch
-- [ ] **AUTH-02**: Wallet auto-locks after configurable idle timeout (default 15 min)
+- [x] **AUTH-01**: User must enter app password to unlock wallet on launch
+- [x] **AUTH-02**: Wallet auto-locks after configurable idle timeout (default 15 min)
 - [ ] **AUTH-03**: User can configure idle timeout duration in settings
 - [ ] **AUTH-04**: App password required to reveal mnemonic phrase
 - [ ] **AUTH-05**: App password required to override guardrail blocks (not for regular transaction signing)
 - [ ] **AUTH-06**: App password required to create or delete an API key
 - [ ] **AUTH-07**: User can set and change app password in settings
-- [ ] **AUTH-08**: Password hash stored securely (scrypt-derived, not plaintext)
+- [x] **AUTH-08**: Password hash stored securely (scrypt-derived, not plaintext)
 
 ### Agent API
 
@@ -136,14 +136,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
 | AUTH-06 | Phase 1 | Pending |
 | AUTH-07 | Phase 1 | Pending |
-| AUTH-08 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Complete |
 | AGNT-01 | Phase 2 | Pending |
 | AGNT-02 | Phase 2 | Pending |
 | AGNT-03 | Phase 3 | Pending |
