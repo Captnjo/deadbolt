@@ -280,6 +280,7 @@ Score: count of [hasUppercase, hasLowercase, hasDigit, hasSpecial] that are true
 | Auth challenge body | "Enter your app password to continue." | Default |
 | Auth challenge CTA | "Verify" | Default — distinguishes from "Unlock" on lock screen |
 | Auth challenge cancel | "Go Back" | Checker fix — communicates effect without generic label; dialog context provides noun |
+| Auth challenge wrong password | "Incorrect password. Please try again." | Default — matches lock screen error for consistency |
 | Change password section row | "Change Password" | Default |
 | Auto-lock section row | "Auto-Lock Timeout" | Default |
 | Lock now button | "Lock Now" | Default |
