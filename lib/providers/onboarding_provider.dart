@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../src/rust/api/auth.dart' as auth_bridge;
 import '../src/rust/api/wallet.dart' as bridge;
 import '../src/rust/api/hardware.dart' as hw_bridge;
 import '../src/rust/api/types.dart';
@@ -19,6 +20,7 @@ enum OnboardingPath { create, import_, hardware }
 /// Steps in the onboarding wizard.
 enum OnboardingStep {
   welcome,
+  setPassword,
   walletName,
   displayMnemonic,
   verifyBackup,
@@ -41,6 +43,7 @@ class OnboardingState {
   final bool loading;
   final DetectedPortDto? detectedDevice;
   final WalletInfoDto? createdWallet;
+  final String? password; // Held temporarily during onboarding, cleared on complete
 
   const OnboardingState({
     this.step = OnboardingStep.welcome,
@@ -54,6 +57,7 @@ class OnboardingState {
     this.loading = false,
     this.detectedDevice,
     this.createdWallet,
+    this.password,
   });
 
   OnboardingState copyWith({
@@ -68,6 +72,7 @@ class OnboardingState {
     bool? loading,
     DetectedPortDto? detectedDevice,
     WalletInfoDto? createdWallet,
+    String? password,
   }) {
     return OnboardingState(
       step: step ?? this.step,
@@ -81,6 +86,9 @@ class OnboardingState {
       loading: loading ?? this.loading,
       detectedDevice: detectedDevice ?? this.detectedDevice,
       createdWallet: createdWallet ?? this.createdWallet,
+      // password uses same explicit-null pattern as error: passing null clears it.
+      // Callers that want to preserve it must not pass the parameter.
+      password: password,
     );
   }
 
@@ -98,6 +106,7 @@ class OnboardingState {
       case OnboardingPath.create:
         return [
           OnboardingStep.welcome,
+          OnboardingStep.setPassword,
           OnboardingStep.walletName,
           OnboardingStep.displayMnemonic,
           OnboardingStep.verifyBackup,
@@ -106,6 +115,7 @@ class OnboardingState {
       case OnboardingPath.import_:
         return [
           OnboardingStep.welcome,
+          OnboardingStep.setPassword,
           OnboardingStep.walletName,
           OnboardingStep.importPhrase,
           OnboardingStep.complete,
@@ -113,6 +123,7 @@ class OnboardingState {
       case OnboardingPath.hardware:
         return [
           OnboardingStep.welcome,
+          OnboardingStep.setPassword,
           OnboardingStep.walletName,
           OnboardingStep.detectDevice,
           OnboardingStep.connectDevice,
@@ -130,12 +141,27 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
   void choosePath(OnboardingPath path) {
     state = state.copyWith(
       path: path,
-      step: OnboardingStep.walletName,
+      step: OnboardingStep.setPassword,
     );
   }
 
   void setWalletName(String name) {
     state = state.copyWith(walletName: name);
+  }
+
+  /// Store the app password via FFI then advance to the wallet name step.
+  Future<void> advanceFromPassword(String password) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      await auth_bridge.setAppPassword(password: password);
+      state = state.copyWith(
+        step: OnboardingStep.walletName,
+        password: password, // Held temporarily; cleared in completeOnboarding
+        loading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), loading: false);
+    }
   }
 
   void advanceFromName() {
@@ -268,6 +294,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
     state = state.copyWith(loading: true);
     try {
       await bridge.completeOnboarding();
+      state = state.copyWith(password: null); // Clear password from Dart memory
       ref.invalidate(needsOnboardingProvider);
       ref.invalidate(walletListProvider);
     } catch (e) {
@@ -280,8 +307,10 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
     switch (state.step) {
       case OnboardingStep.welcome:
         return; // Can't go back
-      case OnboardingStep.walletName:
+      case OnboardingStep.setPassword:
         state = state.copyWith(step: OnboardingStep.welcome);
+      case OnboardingStep.walletName:
+        state = state.copyWith(step: OnboardingStep.setPassword);
       case OnboardingStep.displayMnemonic:
         state = state.copyWith(step: OnboardingStep.walletName);
       case OnboardingStep.verifyBackup:

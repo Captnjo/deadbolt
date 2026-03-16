@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../theme/brand_theme.dart';
 import 'steps/welcome_step.dart';
+import 'steps/set_password_step.dart';
 import 'steps/wallet_name_step.dart';
 import 'steps/display_mnemonic_step.dart';
 import 'steps/verify_backup_step.dart';
@@ -100,6 +101,7 @@ class OnboardingShell extends ConsumerWidget {
   Widget _buildStep(OnboardingStep step) {
     return switch (step) {
       OnboardingStep.welcome => const WelcomeStep(),
+      OnboardingStep.setPassword => const SetPasswordStep(),
       OnboardingStep.walletName => const WalletNameStep(),
       OnboardingStep.displayMnemonic => const DisplayMnemonicStep(),
       OnboardingStep.verifyBackup => const VerifyBackupStep(),
