@@ -1,7 +1,7 @@
 use chacha20poly1305::aead::{Aead, KeyInit};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use scrypt::Params as ScryptParams;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::models::DeadboltError;
 
@@ -79,8 +79,9 @@ pub fn encrypt(plaintext: &[u8], password: &[u8], strength: KdfStrength) -> Resu
     Ok(vault)
 }
 
-/// Decrypt vault file bytes with a password. Returns plaintext.
-pub fn decrypt(vault_data: &[u8], password: &[u8], strength: KdfStrength) -> Result<Vec<u8>, DeadboltError> {
+/// Decrypt vault file bytes with a password. Returns plaintext wrapped in Zeroizing
+/// so that the plaintext bytes are zeroed from memory when the value is dropped.
+pub fn decrypt(vault_data: &[u8], password: &[u8], strength: KdfStrength) -> Result<Zeroizing<Vec<u8>>, DeadboltError> {
     // Minimum size: 1 (version) + 16 (salt) + 12 (nonce) + 16 (tag) = 45
     if vault_data.len() < 45 {
         return Err(DeadboltError::VaultError("Vault data too short".into()));
@@ -110,7 +111,7 @@ pub fn decrypt(vault_data: &[u8], password: &[u8], strength: KdfStrength) -> Res
     // Zeroize key material
     key.zeroize();
 
-    Ok(plaintext)
+    Ok(Zeroizing::new(plaintext))
 }
 
 /// Encrypt a 32-byte seed directly with a vault key (no password derivation).
@@ -138,7 +139,9 @@ pub fn encrypt_with_key(plaintext: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, Dea
 
 /// Decrypt vault file bytes with a vault key (no password derivation).
 /// Used for the Android hybrid flow.
-pub fn decrypt_with_key(vault_data: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, DeadboltError> {
+/// Returns plaintext wrapped in Zeroizing so that the plaintext bytes are zeroed
+/// from memory when the value is dropped.
+pub fn decrypt_with_key(vault_data: &[u8], key: &[u8; 32]) -> Result<Zeroizing<Vec<u8>>, DeadboltError> {
     if vault_data.len() < 45 {
         return Err(DeadboltError::VaultError("Vault data too short".into()));
     }
@@ -160,7 +163,7 @@ pub fn decrypt_with_key(vault_data: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, De
         .decrypt(nonce, ciphertext)
         .map_err(|_| DeadboltError::VaultError("Decryption failed (wrong key or corrupted data)".into()))?;
 
-    Ok(plaintext)
+    Ok(Zeroizing::new(plaintext))
 }
 
 /// Generate a random 32-byte vault key for the Android hybrid flow.

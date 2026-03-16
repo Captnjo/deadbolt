@@ -235,7 +235,10 @@ impl WalletManager {
         let vault_key = storage.retrieve_vault_key(address)?;
         let vault_data = Self::read_vault_file(address, "mnemonic.vault")?;
         let plaintext = vault::decrypt_with_key(&vault_data, &vault_key)?;
-        let phrase = String::from_utf8(plaintext)
+        // plaintext is Zeroizing<Vec<u8>>; to_vec() copies the bytes into a new Vec<u8>
+        // that String::from_utf8 can consume. The Zeroizing wrapper is dropped right after,
+        // zeroing the decrypted bytes from memory.
+        let phrase = String::from_utf8(plaintext.to_vec())
             .map_err(|e| DeadboltError::VaultError(format!("Invalid mnemonic data: {e}")))?;
         Ok(phrase.split_whitespace().map(String::from).collect())
     }
