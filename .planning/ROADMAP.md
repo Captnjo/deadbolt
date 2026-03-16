@@ -50,7 +50,13 @@ Plans:
   3. User can create an API key (shown once, then masked), copy it, and revoke it from the Agent API settings screen
   4. The quick-test section displays a ready-to-paste curl command using the user's real API token
   5. Closing the app cleanly shuts down the HTTP server; next launch can bind port 9876 without an "address in use" error
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Rust server: WalletDataSnapshot, query handlers (/balance, /tokens, /price, /history), SO_REUSEADDR, AppConfig labels
+- [ ] 02-02-PLAN.md — FRB bridge agent.rs: server start/stop, API key CRUD, wallet data updates
+- [ ] 02-03-PLAN.md — Flutter providers, NavigationRail 5th entry, GoRouter /agent-api, window close lifecycle
+- [ ] 02-04-PLAN.md — Agent API screen UI (server toggle, key management, quick test curl) + human verification
 
 ### Phase 3: Agent Signing Prompt
 **Goal**: AI agents can POST transaction intents and users review, simulate, approve, or reject them through a non-blocking overlay
@@ -107,7 +113,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
-| 2. Agent API Bridge | 0/TBD | Not started | - |
+| 2. Agent API Bridge | 0/4 | Planning complete | - |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
@@ -115,4 +121,4 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-16 after Phase 1 planning complete*
+*Last updated: 2026-03-16 after Phase 2 planning complete*
