@@ -10,6 +10,7 @@ import '../../providers/network_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../src/rust/api/wallet.dart' as bridge;
 import '../../theme/brand_theme.dart';
+import 'security_settings_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -116,6 +117,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ref.read(apiKeysProvider.notifier).setJitoMevProtection(value);
           },
         ),
+
+        const SecuritySettingsSection(),
 
         const SizedBox(height: 32),
         const Divider(),
