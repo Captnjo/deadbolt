@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-auth-system 01-04-PLAN.md
-last_updated: "2026-03-16T11:03:04.621Z"
+stopped_at: Completed 01-auth-system 01-03-PLAN.md
+last_updated: "2026-03-16T11:03:19.957Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 - [01-01]: FRB bridge scrypt ops are pub async, bool checks are frb(sync) pub fn — prevents Flutter main thread blocking
 - [01-01]: Test-specific Keychain accounts (process::id() suffix) isolate tests from real app_password_hash entry
 - [Phase 01-auth-system]: [01-04]: password field in OnboardingState uses explicit-null copyWith pattern — clears on any copyWith without it for security, matches error field convention
+- [Phase 01-auth-system]: auth.dart created as typed stub (UnimplementedError) rather than modifying generated frb_generated.dart — keeps generated files clean, replaced by codegen when Flutter toolchain available
+- [Phase 01-auth-system]: GoRouter lock redirect: watch authProvider in appRouterProvider + hasAppPassword() sync check guards all routes behind /lock when app is locked and password is set
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T11:02:38.018Z
-Stopped at: Completed 01-auth-system 01-04-PLAN.md
+Last session: 2026-03-16T11:03:19.955Z
+Stopped at: Completed 01-auth-system 01-03-PLAN.md
 Resume file: None
