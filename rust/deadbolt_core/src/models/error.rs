@@ -73,6 +73,9 @@ pub enum DeadboltError {
 
     #[error("Guardrail violation: {0}")]
     GuardrailViolation(String),
+
+    #[error("Wallet is locked")]
+    WalletLocked,
 }
 
 pub type Result<T> = std::result::Result<T, DeadboltError>;

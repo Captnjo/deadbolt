@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod agent;
 pub mod crypto;
 pub mod hardware;

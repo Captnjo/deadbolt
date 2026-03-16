@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use zeroize::Zeroize;
 
+use crate::auth::lock_state;
 use crate::crypto::mnemonic;
 use crate::crypto::signer::SoftwareSigner;
 use crate::crypto::vault;
@@ -213,6 +214,7 @@ impl WalletManager {
 
     /// Get a signer for the active unlocked wallet.
     pub fn get_active_signer(&self) -> Result<SoftwareSigner, DeadboltError> {
+        lock_state::assert_unlocked()?;
         let address = self
             .config
             .active_wallet
@@ -223,6 +225,7 @@ impl WalletManager {
 
     /// Get a signer for a specific unlocked wallet.
     pub fn get_signer(&self, address: &str) -> Result<SoftwareSigner, DeadboltError> {
+        lock_state::assert_unlocked()?;
         self.session.get_signer(address)
     }
 
@@ -397,6 +400,9 @@ mod tests {
     #[test]
     fn test_unlock_lock_sign() {
         with_temp_home(|| {
+            // APP_LOCKED starts true; set to false so get_signer passes the lock gate.
+            crate::auth::lock_state::set_locked(false);
+
             let storage = MemoryStorage::new();
             let mut mgr = WalletManager::with_config(AppConfig::default());
 
@@ -408,7 +414,7 @@ mod tests {
             mgr.unlock(addr, &storage).unwrap();
             assert!(mgr.is_unlocked(addr));
 
-            // Can get signer when unlocked
+            // Can get signer when unlocked (APP_LOCKED=false, session unlocked)
             let signer = mgr.get_signer(addr).unwrap();
             let sig = signer.sign(b"test message").unwrap();
             assert_eq!(sig.len(), 64);
@@ -416,8 +422,11 @@ mod tests {
             mgr.lock(addr);
             assert!(!mgr.is_unlocked(addr));
 
-            // Can't get signer when locked
+            // Can't get signer when session-locked (APP_LOCKED still false, but session locked)
             assert!(mgr.get_signer(addr).is_err());
+
+            // Restore global lock state for other tests
+            crate::auth::lock_state::set_locked(true);
         });
     }
 
