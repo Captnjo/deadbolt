@@ -12,9 +12,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **AUTH-01**: User must enter app password to unlock wallet on launch
 - [x] **AUTH-02**: Wallet auto-locks after configurable idle timeout (default 15 min)
 - [x] **AUTH-03**: User can configure idle timeout duration in settings
-- [ ] **AUTH-04**: App password required to reveal mnemonic phrase
-- [ ] **AUTH-05**: App password required to override guardrail blocks (not for regular transaction signing)
-- [ ] **AUTH-06**: App password required to create or delete an API key
+- [x] **AUTH-04**: App password required to reveal mnemonic phrase
+- [x] **AUTH-05**: App password required to override guardrail blocks (not for regular transaction signing)
+- [x] **AUTH-06**: App password required to create or delete an API key
 - [x] **AUTH-07**: User can set and change app password in settings
 - [x] **AUTH-08**: Password hash stored securely (scrypt-derived, not plaintext)
 
@@ -139,9 +139,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-01 | Phase 1 | Complete |
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
-| AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 1 | Pending |
-| AUTH-06 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Complete |
+| AUTH-05 | Phase 1 | Complete |
+| AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Complete |
 | AUTH-08 | Phase 1 | Complete |
 | AGNT-01 | Phase 2 | Pending |

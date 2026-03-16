@@ -12,7 +12,7 @@ Deadbolt's existing codebase has the core components partially built — axum ag
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Auth System** - Wire vault unlock and app password gate into Flutter UI with idle auto-lock
+- [x] **Phase 1: Auth System** - Wire vault unlock and app password gate into Flutter UI with idle auto-lock (completed 2026-03-16)
 - [ ] **Phase 2: Agent API Bridge** - Expose the existing axum server to Flutter via FRB StreamSink and add key management UI
 - [ ] **Phase 3: Agent Signing Prompt** - Build the dismissable overlay, intent queue, simulation results, and full lifecycle tracking
 - [ ] **Phase 4: Guardrails Engine** - Harden the existing Rust guardrails with atomic concurrency, persistence, and Flutter settings UI
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Attempting to reveal the mnemonic, create/delete an API key, or approve a transaction without unlocking shows an auth challenge
   4. User can change their app password from settings and the new password works on next lock/unlock
   5. Rust vault's AtomicBool `locked` flag gates all in-flight signing calls; a call in-progress at lock time returns WalletLocked error
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Rust auth module (password hash + AtomicBool lock gate) and FFI bridge
@@ -106,7 +106,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth System | 4/5 | In Progress|  |
+| 1. Auth System | 5/5 | Complete   | 2026-03-16 |
 | 2. Agent API Bridge | 0/TBD | Not started | - |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |

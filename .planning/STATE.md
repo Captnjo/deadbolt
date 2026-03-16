@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-auth-system 01-03-PLAN.md
-last_updated: "2026-03-16T11:03:19.957Z"
+stopped_at: "Checkpoint: 01-05 Task 2 — awaiting human end-to-end verification of Phase 1 auth system"
+last_updated: "2026-03-16T11:09:19.274Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 60
 ---
 
@@ -52,6 +52,7 @@ Progress: [██████░░░░] 60%
 *Updated after each plan completion*
 | Phase 01-auth-system P04 | 9 | 2 tasks | 4 files |
 | Phase 01-auth-system P03 | 22 | 2 tasks | 6 files |
+| Phase 01-auth-system P05 | 3 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 01-auth-system]: [01-04]: password field in OnboardingState uses explicit-null copyWith pattern — clears on any copyWith without it for security, matches error field convention
 - [Phase 01-auth-system]: auth.dart created as typed stub (UnimplementedError) rather than modifying generated frb_generated.dart — keeps generated files clean, replaced by codegen when Flutter toolchain available
 - [Phase 01-auth-system]: GoRouter lock redirect: watch authProvider in appRouterProvider + hasAppPassword() sync check guards all routes behind /lock when app is locked and password is set
+- [Phase 01-auth-system]: showAuthChallengeDialog helper pattern established for gating sensitive operations behind password re-entry from any BuildContext
+- [Phase 01-auth-system]: _ChangePasswordDialog co-located in security_settings_section.dart as private ConsumerStatefulWidget — only ever used from SecuritySettingsSection
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T11:03:19.955Z
-Stopped at: Completed 01-auth-system 01-03-PLAN.md
+Last session: 2026-03-16T11:09:19.272Z
+Stopped at: Checkpoint: 01-05 Task 2 — awaiting human end-to-end verification of Phase 1 auth system
 Resume file: None
