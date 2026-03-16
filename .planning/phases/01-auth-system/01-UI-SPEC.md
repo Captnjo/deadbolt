@@ -40,7 +40,7 @@ Declared values (multiples of 4). Sourced from existing widget measurements acro
 | 3xl | 64px | Not used in this phase |
 
 Exceptions:
-- Password submit button height: minimum 44px (touch/click target; matches `ElevatedButton` with `vertical: 12` padding on a 20px font = 44px total)
+- Password submit button height: minimum 48px (touch/click target; `ElevatedButton` with `vertical: 14` padding on a 20px font = 48px total — standard 4x grid value)
 - Strength meter bar height: 4px (xs) — intentionally slim decorative element
 
 ---
