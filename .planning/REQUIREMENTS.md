@@ -15,7 +15,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **AUTH-04**: App password required to reveal mnemonic phrase
 - [ ] **AUTH-05**: App password required to override guardrail blocks (not for regular transaction signing)
 - [ ] **AUTH-06**: App password required to create or delete an API key
-- [ ] **AUTH-07**: User can set and change app password in settings
+- [x] **AUTH-07**: User can set and change app password in settings
 - [x] **AUTH-08**: Password hash stored securely (scrypt-derived, not plaintext)
 
 ### Agent API
@@ -142,7 +142,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
 | AUTH-06 | Phase 1 | Pending |
-| AUTH-07 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Complete |
 | AUTH-08 | Phase 1 | Complete |
 | AGNT-01 | Phase 2 | Pending |
 | AGNT-02 | Phase 2 | Pending |
