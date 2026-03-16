@@ -16,24 +16,54 @@ import '../features/nft/send_nft_screen.dart';
 import '../features/address_book/address_book_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
+import '../features/lock/lock_screen.dart';
 import '../providers/onboarding_provider.dart';
+import '../providers/auth_provider.dart';
+import '../src/rust/api/auth.dart' as auth_bridge;
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final needsOnboarding = ref.watch(needsOnboardingProvider);
+  final authState = ref.watch(authProvider);
+  final isLocked = authState.status == AuthStatus.locked;
+  final hasPassword = auth_bridge.hasAppPassword();
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: needsOnboarding ? '/onboarding' : '/dashboard',
+    initialLocation: needsOnboarding ? '/onboarding' : '/lock',
     redirect: (context, state) {
-      final onOnboarding = state.uri.path == '/onboarding';
+      final path = state.uri.path;
+      final onOnboarding = path == '/onboarding';
+      final onLock = path == '/lock';
+
+      // Onboarding takes priority over everything
       if (needsOnboarding && !onOnboarding) return '/onboarding';
       if (!needsOnboarding && onOnboarding) return '/dashboard';
+
+      // Lock screen redirect (only if a password has been set)
+      if (!needsOnboarding && hasPassword && isLocked && !onLock) {
+        return '/lock';
+      }
+      if (!needsOnboarding && !isLocked && onLock) return '/dashboard';
+
       return null;
     },
     routes: [
+      // Lock screen — full-screen route outside the shell
+      GoRoute(
+        path: '/lock',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const LockScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 200),
+        ),
+      ),
       GoRoute(
         path: '/onboarding',
         parentNavigatorKey: _rootNavigatorKey,

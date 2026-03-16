@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../providers/auth_provider.dart';
 import '../providers/wallet_emoji_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../theme/brand_theme.dart';
@@ -21,6 +22,9 @@ class _AppShellState extends ConsumerState<AppShell>
     with SingleTickerProviderStateMixin {
   late final AnimationController _drawerController;
   late final Animation<Offset> _slideAnimation;
+
+  /// FocusNode for KeyboardListener activity detection.
+  final FocusNode _activityFocusNode = FocusNode();
 
   static const _destinations = [
     NavigationRailDestination(
@@ -66,6 +70,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void dispose() {
     _drawerController.dispose();
+    _activityFocusNode.dispose();
     super.dispose();
   }
 
@@ -167,7 +172,21 @@ class _AppShellState extends ConsumerState<AppShell>
           Expanded(
             child: Stack(
               children: [
-                widget.child,
+                // Wrap child in Listener + KeyboardListener to reset idle timer
+                // on any mouse or keyboard activity while the app is unlocked.
+                Listener(
+                  onPointerMove: (_) =>
+                      ref.read(authProvider.notifier).resetActivity(),
+                  onPointerDown: (_) =>
+                      ref.read(authProvider.notifier).resetActivity(),
+                  child: KeyboardListener(
+                    focusNode: _activityFocusNode,
+                    autofocus: true,
+                    onKeyEvent: (_) =>
+                        ref.read(authProvider.notifier).resetActivity(),
+                    child: widget.child,
+                  ),
+                ),
                 // Scrim
                 AnimatedBuilder(
                   animation: _drawerController,
