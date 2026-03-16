@@ -108,12 +108,13 @@ These are the Material 3 widgets this phase uses. Executor must not reinvent; us
 | API key card/row | `ListTile(contentPadding: EdgeInsets.zero)` with title, subtitle (masked key), and trailing action icons | Matches change password ListTile pattern |
 | Key mask display | `Text('db_••••x7f2', style: TextStyle(fontSize: 12, fontFamily: 'monospace'))` | BrandColors.textSecondary |
 | Primary CTA button | `ElevatedButton` (BrandTheme: orange background, black text, 8px radius) | "Create Your First Key", "Create Key" |
-| Secondary/destructive button | `OutlinedButton` (BrandTheme: border + white text) | "Revoke" action before auth challenge |
+| Secondary/destructive button | `OutlinedButton` (BrandTheme: border + white text) | "Revoke Key" action before auth challenge |
 | Auth challenge | `showAuthChallengeDialog` — established in Phase 1 (`lib/features/lock/auth_challenge_dialog.dart`) | Required before create, delete, reveal |
 | "Key created" dialog | `AlertDialog` with copyable TextField (readOnly, monospace) and "Copy & Close" ElevatedButton | Full key shown once; never stored in state after dialog closes |
 | Endpoint dropdown | `DropdownButton<String>` (underline: SizedBox.shrink()) | Matches existing DropdownButton usage in settings |
 | Curl command display | `SelectableText` in `Container` with `BrandColors.card` background, 8px border radius, monospace 12px | Allows user to select/copy without a separate copy button (or with one) |
-| Copy button | `IconButton(icon: Icon(Icons.copy, size: 20))` | Adjacent to curl display and key row |
+| Copy button | `Tooltip(message: 'Copy to clipboard', child: IconButton(icon: Icon(Icons.copy, size: 20)))` | Adjacent to curl display and key row — Tooltip required; icon-only button must not be bare |
+| Reveal button | `Tooltip(message: 'Reveal key', child: IconButton(icon: Icon(Icons.visibility_outlined, size: 20)))` | On key row — Tooltip required; icon-only button must not be bare |
 | Empty state | `Column` centered with `Icon(Icons.lan_outlined, size: 48, color: BrandColors.textDisabled)` + explanation text + ElevatedButton CTA | See Copywriting Contract |
 | Swipe-to-delete | `Dismissible` with `direction: DismissDirection.endToStart`, red background (`BrandColors.error`), trash icon | Key row swipe reveals revoke; requires confirm dialog then auth challenge |
 | Loading spinner | `SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))` | Matches `_ChangePasswordDialog` loading state line 287–290 |
@@ -136,14 +137,14 @@ These are the Material 3 widgets this phase uses. Executor must not reinvent; us
 5. Dialog closes: key list refreshes showing new row with masked key (`db_••••x7f2`).
 
 ### API Key Reveal Flow
-1. User taps eye/reveal icon on a key row.
+1. User taps `Tooltip(message: 'Reveal key', child: IconButton(...))` on a key row.
 2. `showAuthChallengeDialog` — requires app password.
 3. On auth success: show `AlertDialog` with full token in read-only monospace `TextField` + "Copy & Close" button.
 4. Dialog close: row returns to masked state.
 
 ### API Key Revocation Flow
 1. User swipes key row end-to-start. `Dismissible` reveals red background with `Icons.delete`.
-2. On dismiss threshold reached: show `AlertDialog` — "Revoke API key?" with label, "Cancel" `TextButton` + "Revoke" `OutlinedButton` (foreground: BrandColors.error).
+2. On dismiss threshold reached: show `AlertDialog` — "Revoke API key?" with label, "Keep Key" `TextButton` + "Revoke Key" `OutlinedButton` (foreground: BrandColors.error).
 3. On confirm: `showAuthChallengeDialog` — requires app password.
 4. On auth success: FRB `revokeApiKey(token)` — updates both config on disk AND live `AppState.api_tokens` in running server.
 5. Key row removed from list immediately. If last key was revoked: server toggle is disabled and server is stopped.
@@ -152,7 +153,7 @@ These are the Material 3 widgets this phase uses. Executor must not reinvent; us
 - `DropdownButton` lists all 6 endpoints: `/health`, `/wallet`, `/balance`, `/tokens`, `/price`, `/history`.
 - Auto-selects first key if exactly one key exists; shows key selector dropdown if multiple keys exist.
 - Selecting endpoint or key regenerates curl command immediately (no submit button needed).
-- Curl display is `SelectableText` in a code block styled card. Adjacent `IconButton(Icons.copy)` copies to clipboard.
+- Curl display is `SelectableText` in a code block styled card. Adjacent `Tooltip(message: 'Copy to clipboard', child: IconButton(Icons.copy))` copies to clipboard.
 - Clipboard auto-clears after 30 seconds (Phase 6 polish requirement PLSH-02 — implement the timer here proactively since this is the canonical sensitive-copy use case).
 
 ### NavigationRail (app_shell.dart)
@@ -198,6 +199,8 @@ Single scrollable `ListView(padding: EdgeInsets.all(24))`:
 [Code block card]  curl -H "Authorization: Bearer <token>" http://localhost:9876<endpoint>
 [Row]  [Spacer]  [IconButton copy]
 ```
+
+Primary focal point: the server toggle ON/OFF state — the orange accent (`BrandColors.primary`) thumb and active indicator is the first element the eye should resolve on the populated screen; everything below it (keys, curl test) is secondary.
 
 **Empty State (no keys yet):**
 Replaces the keys list + create button with a centered `Column`:
@@ -247,8 +250,8 @@ Quick Test section is hidden when 0 keys exist.
 | Reveal key copy button | Copy & Close |
 | Revoke confirmation dialog title | Revoke API key? |
 | Revoke confirmation dialog body | "{label}" will be permanently revoked. Any agent using it will lose access immediately. |
-| Revoke confirmation cancel | Cancel |
-| Revoke confirmation action | Revoke |
+| Revoke confirmation cancel | Keep Key |
+| Revoke confirmation action | Revoke Key |
 | Error: port in use | Port 9876 is in use by another process. Close it and try again. |
 | Error: no keys on start attempt | Create at least one API key before starting the server. |
 | Error: max keys reached | Maximum of 10 API keys allowed. Revoke an existing key first. |
@@ -260,7 +263,7 @@ Quick Test section is hidden when 0 keys exist.
 
 | Action | Trigger | Confirmation | Auth Required |
 |--------|---------|--------------|---------------|
-| Revoke API key | Swipe-to-delete on key row | AlertDialog with label, Cancel + Revoke buttons | Yes — `showAuthChallengeDialog` after confirm dialog |
+| Revoke API key | Swipe-to-delete on key row | AlertDialog with label, "Keep Key" + "Revoke Key" buttons | Yes — `showAuthChallengeDialog` after confirm dialog |
 | Server stop (implicit, last key revoked) | Triggered automatically when 0 keys remain | No separate confirmation — described in revoke copy | Covered by revoke auth |
 
 No other destructive actions in this phase. Intent deletion is Phase 3 scope.
@@ -272,6 +275,8 @@ No other destructive actions in this phase. Intent deletion is Phase 3 scope.
 - All interactive elements: minimum 44x44px touch target (Material 3 default; confirm via `IconButton` minTapSize)
 - Status indicator circles: must include `Semantics(label: 'Server status: running')` wrapper — color alone does not convey state
 - Key masked display: `Semantics(label: 'API key, masked. Tap eye icon to reveal.')` on the masked text widget
+- Copy icon button: wrapped as `Tooltip(message: 'Copy to clipboard', child: IconButton(...))` — tooltip text serves as accessible label for screen readers
+- Reveal icon button: wrapped as `Tooltip(message: 'Reveal key', child: IconButton(...))` — tooltip text serves as accessible label for screen readers
 - `Dismissible` swipe: also provide a reveal-via-tap alternative (three-dot menu or explicit Revoke button in key row) for keyboard/mouse users on macOS desktop
 - Error messages: rendered as `Text` inline with `BrandColors.error` — not behind a tooltip or aria-hidden
 
