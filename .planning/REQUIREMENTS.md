@@ -136,65 +136,65 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| AUTH-04 | — | Pending |
-| AUTH-05 | — | Pending |
-| AUTH-06 | — | Pending |
-| AUTH-07 | — | Pending |
-| AUTH-08 | — | Pending |
-| AGNT-01 | — | Pending |
-| AGNT-02 | — | Pending |
-| AGNT-03 | — | Pending |
-| AGNT-04 | — | Pending |
-| AGNT-05 | — | Pending |
-| AGNT-06 | — | Pending |
-| AGNT-07 | — | Pending |
-| AGNT-08 | — | Pending |
-| AGNT-09 | — | Pending |
-| AGNT-10 | — | Pending |
-| AGNT-11 | — | Pending |
-| AGNT-12 | — | Pending |
-| AGNT-13 | — | Pending |
-| AGNT-14 | — | Pending |
-| AGNT-15 | — | Pending |
-| GRDL-01 | — | Pending |
-| GRDL-02 | — | Pending |
-| GRDL-03 | — | Pending |
-| GRDL-04 | — | Pending |
-| GRDL-05 | — | Pending |
-| GRDL-06 | — | Pending |
-| GRDL-07 | — | Pending |
-| HWLT-01 | — | Pending |
-| HWLT-02 | — | Pending |
-| HWLT-03 | — | Pending |
-| HWLT-04 | — | Pending |
-| HWLT-05 | — | Pending |
-| HWLT-06 | — | Pending |
-| INFR-01 | — | Pending |
-| INFR-02 | — | Pending |
-| INFR-03 | — | Pending |
-| INFR-04 | — | Pending |
-| INFR-05 | — | Pending |
-| INFR-06 | — | Pending |
-| INFR-07 | — | Pending |
-| INFR-08 | — | Pending |
-| NAVS-01 | — | Pending |
-| NAVS-02 | — | Pending |
-| NAVS-03 | — | Pending |
-| NAVS-04 | — | Pending |
-| WLMT-01 | — | Pending |
-| PLSH-01 | — | Pending |
-| PLSH-02 | — | Pending |
-| PLSH-03 | — | Pending |
-| PLSH-04 | — | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Pending |
+| AGNT-01 | Phase 2 | Pending |
+| AGNT-02 | Phase 2 | Pending |
+| AGNT-03 | Phase 3 | Pending |
+| AGNT-04 | Phase 3 | Pending |
+| AGNT-05 | Phase 3 | Pending |
+| AGNT-06 | Phase 3 | Pending |
+| AGNT-07 | Phase 3 | Pending |
+| AGNT-08 | Phase 3 | Pending |
+| AGNT-09 | Phase 3 | Pending |
+| AGNT-10 | Phase 2 | Pending |
+| AGNT-11 | Phase 2 | Pending |
+| AGNT-12 | Phase 2 | Pending |
+| AGNT-13 | Phase 2 | Pending |
+| AGNT-14 | Phase 2 | Pending |
+| AGNT-15 | Phase 2 | Pending |
+| GRDL-01 | Phase 4 | Pending |
+| GRDL-02 | Phase 4 | Pending |
+| GRDL-03 | Phase 4 | Pending |
+| GRDL-04 | Phase 4 | Pending |
+| GRDL-05 | Phase 4 | Pending |
+| GRDL-06 | Phase 4 | Pending |
+| GRDL-07 | Phase 4 | Pending |
+| HWLT-01 | Phase 5 | Pending |
+| HWLT-02 | Phase 5 | Pending |
+| HWLT-03 | Phase 5 | Pending |
+| HWLT-04 | Phase 5 | Pending |
+| HWLT-05 | Phase 5 | Pending |
+| HWLT-06 | Phase 5 | Pending |
+| INFR-01 | Phase 5 | Pending |
+| INFR-02 | Phase 5 | Pending |
+| INFR-03 | Phase 5 | Pending |
+| INFR-04 | Phase 4 | Pending |
+| INFR-05 | Phase 2 | Pending |
+| INFR-06 | Phase 1 | Pending |
+| INFR-07 | Phase 1 | Pending |
+| INFR-08 | Phase 2 | Pending |
+| NAVS-01 | Phase 6 | Pending |
+| NAVS-02 | Phase 6 | Pending |
+| NAVS-03 | Phase 6 | Pending |
+| NAVS-04 | Phase 6 | Pending |
+| WLMT-01 | Phase 6 | Pending |
+| PLSH-01 | Phase 6 | Pending |
+| PLSH-02 | Phase 6 | Pending |
+| PLSH-03 | Phase 6 | Pending |
+| PLSH-04 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 48 total
-- Mapped to phases: 0
-- Unmapped: 48 ⚠️
+- v1 requirements: 53 total
+- Mapped to phases: 53
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial definition*
+*Last updated: 2026-03-16 after roadmap creation — all 53 requirements mapped*
