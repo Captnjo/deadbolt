@@ -10,6 +10,13 @@ fn storage() -> deadbolt_core::storage::KeychainStorage {
     deadbolt_core::storage::KeychainStorage::new()
 }
 
+/// Public accessor for secure storage (for use by sibling modules like auth).
+#[cfg(target_os = "macos")]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn storage_pub() -> deadbolt_core::storage::KeychainStorage {
+    deadbolt_core::storage::KeychainStorage::new()
+}
+
 /// Global singleton wallet manager (public for sibling modules).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn manager_pub() -> &'static RwLock<WalletManager> {

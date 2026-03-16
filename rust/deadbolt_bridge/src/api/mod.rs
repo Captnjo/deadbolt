@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod hardware;
 pub mod init;
 pub mod send;
