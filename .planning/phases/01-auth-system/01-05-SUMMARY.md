@@ -32,6 +32,8 @@ key-files:
     - lib/features/settings/security_settings_section.dart
   modified:
     - lib/features/settings/settings_screen.dart
+    - lib/features/wallet/wallet_list_screen.dart
+    - lib/features/lock/lock_screen.dart
 
 key-decisions:
   - "AuthChallengeDialog uses ConsumerStatefulWidget (not StatefulWidget) for consistency with rest of app pattern; does not actually need ref today but keeps pattern uniform"
@@ -58,7 +60,7 @@ completed: 2026-03-16
 - **Duration:** 3 min
 - **Started:** 2026-03-16T11:05:13Z
 - **Completed:** 2026-03-16T11:08:09Z
-- **Tasks:** 1 of 2 (Task 2 is human-verify checkpoint — awaiting verification)
+- **Tasks:** 2 of 2 (checkpoint verified by user)
 - **Files modified:** 3
 
 ## Accomplishments
@@ -73,7 +75,9 @@ Each task was committed atomically:
 
 1. **Task 1: Create AuthChallengeDialog and SecuritySettingsSection** - `d2df571` (feat)
 
-**Plan metadata:** pending (Task 2 checkpoint not yet verified)
+2. **Task 2: Human verification checkpoint** - verified by user, fixes in `9b850ad`
+
+**Plan metadata:** `18099ab` (docs: complete plan)
 
 ## Files Created/Modified
 
@@ -88,7 +92,12 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Fixes from Human Verification
+
+**1. Lock screen shake too wide/slow** — Reduced offset 0.05→0.02, duration 400→200ms
+**2. Unlock blocked after failed attempts** — Moved countdown trigger to catch block
+**3. Recovery phrase viewable without auth** — Added showAuthChallengeDialog gate + security warning
+**4. Wallet card subtitle overflow 22px** — Wrapped address in Flexible (pre-existing bug)
 
 ## Issues Encountered
 
@@ -101,8 +110,8 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - AuthChallengeDialog is ready for use by any feature in Phase 2+ that needs to gate a sensitive operation (reveal mnemonic, API key management, guardrail bypass)
-- Phase 1 auth system is fully built; Task 2 (human-verify checkpoint) is pending to confirm end-to-end flow
-- After human verification passes, Phase 1 requirements AUTH-03 through AUTH-07 can be marked complete
+- Phase 1 auth system fully verified end-to-end by user
+- All auth requirements (AUTH-03 through AUTH-08) confirmed working
 
 ## Self-Check: PASSED
 
