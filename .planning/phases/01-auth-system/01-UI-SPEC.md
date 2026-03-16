@@ -47,17 +47,16 @@ Exceptions:
 
 ## Typography
 
-Sourced from existing codebase: welcome_step.dart (28/16), settings_screen.dart (24/14/12/11), brand_theme.dart text roles.
+Sourced from existing codebase: welcome_step.dart (28/16), settings_screen.dart (24/14), brand_theme.dart text roles. Four-size scale: 28 (display), 24 (heading), 16 (body), 14 (label + hint). Two-weight scale: 400 regular and 700 bold.
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Display | 28px | 700 (bold) | 1.2 | Lock screen heading ("Deadbolt"), onboarding step primary headline |
 | Heading | 24px | 700 (bold) | 1.2 | Settings section heading ("Security"), screen title ("Settings") |
 | Body | 16px | 400 (regular) | 1.5 | Lock screen tagline, password field labels, dialog body copy |
-| Label | 14px | 600 (semibold) | 1.4 | Settings section category headers (e.g. "Security"), form labels |
-| Caption | 12px | 400 (regular) | 1.4 | Hint text, strength meter label ("Strong"), idle timeout description |
+| Label / Hint | 14px | 700 (bold) for labels; 400 (regular) for hint text | 1.4 | Labels: settings category headers, form labels. Hint: strength meter state ("Weak"/"Fair"/"Strong"), inline error text, idle timeout description |
 
-Weights in use: 400 (regular) and 700 (bold). Label category headers use 600 semibold consistent with settings_screen.dart pattern.
+Weights in use: 400 (regular) and 700 (bold) only.
 
 ---
 
@@ -104,12 +103,12 @@ New components required for this phase. Executor must build each; existing compo
 
 | Pattern | Where | Notes |
 |---------|-------|-------|
-| `TextField` with obscureText + visibility toggle | settings_screen.dart (_heliusObscured pattern) | Exact same pattern for all password fields in this phase |
+| `TextField` with obscureText + visibility toggle | settings_screen.dart (_heliusObscured pattern) | Exact same pattern for all password fields in this phase. Toggle icon must carry `Semantics(label: 'Show password')` when obscured and `Semantics(label: 'Hide password')` when visible — icon-only control, no visible text label. |
 | `AlertDialog` confirmation | settings_screen.dart (`_resetOnboarding`) | Reuse for auth challenge and password change confirm dialogs |
 | `ElevatedButton` | welcome_step.dart, brand_theme.dart | Primary action button (Unlock, Continue, Verify) |
-| `OutlinedButton` | brand_theme.dart | Secondary actions (Cancel in dialogs) |
+| `OutlinedButton` | brand_theme.dart | Secondary actions (Go Back in dialogs) |
 | `ListView` with `padding: EdgeInsets.all(24)` | settings_screen.dart | Settings section layout |
-| Section header style | settings_screen.dart (`fontSize: 14, fontWeight: w600, color: textSecondary`) | "Security" section header in settings |
+| Section header style | settings_screen.dart (`fontSize: 14, fontWeight: w700, color: textSecondary`) | "Security" section header in settings — weight updated to 700 to match two-weight scale |
 
 ---
 
@@ -132,7 +131,7 @@ New components required for this phase. Executor must build each; existing compo
 │  │  Password          [eye]    │    │  TextField, card fill, obscure=true
 │  └─────────────────────────────┘    │
 │                                     │  12px gap
-│  [delay message if attempts > 0]    │  Caption / #E2A93B / "Wait 5s..."
+│  [delay message if attempts > 0]    │  Label-Hint / 14px / #E2A93B / "Wait 5s..."
 │                                     │  8px gap
 │  ┌─────────────────────────────┐    │
 │  │         Unlock              │    │  ElevatedButton, full width
@@ -143,7 +142,7 @@ New components required for this phase. Executor must build each; existing compo
 
 - Logo: `assets/deadbolt_logomark.png` at 80px, `color: Colors.white, colorBlendMode: BlendMode.srcIn`
 - Tagline: "Your self-custodial Solana wallet" — matches welcome_step.dart existing copy
-- Password field: full-width, `obscureText: true`, visibility toggle suffix icon
+- Password field: full-width, `obscureText: true`, visibility toggle suffix icon. Toggle icon: `Semantics(label: 'Show password')` when obscured, `Semantics(label: 'Hide password')` when visible.
 - On wrong password: field border briefly shows `BrandColors.error`, widget applies `Tween<Offset>` shake (±8px horizontal, 200ms, 3 cycles)
 - Escalating delay display: shown between field and button when `failedAttempts > 0`, format "Please wait {N}s before trying again"
 - Loading state: Unlock button shows `CircularProgressIndicator(color: Colors.black, strokeWidth: 2)` in place of label text while `verifyAppPassword` async call is in-flight
@@ -160,15 +159,16 @@ New components required for this phase. Executor must build each; existing compo
 │  ┌────────────────────────┐  │
 │  │  Password     [eye]    │  │  TextField
 │  └────────────────────────┘  │
-│  [inline error if wrong]     │  Caption / 12px / #E74C3C
+│  [inline error if wrong]     │  Label-Hint / 14px / #E74C3C
 │                              │
-│  [Cancel]    [Verify]        │  TextButton + ElevatedButton
+│  [Go Back]    [Verify]       │  TextButton + ElevatedButton
 └──────────────────────────────┘
 ```
 
-- `barrierDismissible: false` — user must Cancel or Verify
+- `barrierDismissible: false` — user must Go Back or Verify
 - Wrong password: inline error text below field, no dialog close
 - Correct password: dialog closes, `onSuccess` callback fires
+- Password field visibility toggle: `Semantics(label: 'Show password')` when obscured, `Semantics(label: 'Hide password')` when visible.
 
 ### Set Password Step (Onboarding)
 
@@ -186,7 +186,7 @@ New components required for this phase. Executor must build each; existing compo
 │  ┌─────────────────────────────┐    │
 │  │  Confirm Password   [eye]   │    │
 │  └─────────────────────────────┘    │
-│  [error if mismatch or < 8 chars]   │  Caption / 12px / error
+│  [error if mismatch or < 8 chars]   │  Label-Hint / 14px / error
 │                                     │  24px gap
 │  ┌─────────────────────────────┐    │
 │  │           Continue          │    │  ElevatedButton
@@ -197,6 +197,7 @@ New components required for this phase. Executor must build each; existing compo
 - Step appears after "Welcome" step and before wallet path selection
 - Continue button disabled (opacity 0.5) until: length >= 8 AND password == confirm
 - Error text shown only after first submit attempt or on blur from confirm field
+- Both password field visibility toggles: `Semantics(label: 'Show password')` / `Semantics(label: 'Hide password')` as appropriate
 
 ### Security Settings Section
 
@@ -204,7 +205,7 @@ Added to existing `settings_screen.dart` as an embedded section, using the exact
 
 ```
 [Divider]
-Security                                ← section header (14px/w600/textSecondary)
+Security                                ← section header (14px/w700/textSecondary)
 
 Change Password             [>]         ← ListTile, taps to show ChangePasswordDialog
 Auto-Lock Timeout                       ← ListTile with trailing dropdown
@@ -255,7 +256,7 @@ Score: count of [hasUppercase, hasLowercase, hasDigit, hasSpecial] that are true
 
 - Triggered by: tap "Reveal Seed Phrase", tap "Create API Key", tap "Delete API Key"
 - Phase 4 guardrail bypass also uses this dialog (hook already defined)
-- Dismiss (Cancel): action is abandoned, no state change
+- Dismiss (Go Back): action is abandoned, no state change
 - Confirm (Verify correct password): action proceeds, dialog dismisses
 
 ---
@@ -278,7 +279,7 @@ Score: count of [hasUppercase, hasLowercase, hasDigit, hasSpecial] that are true
 | Auth challenge title | "Confirm Password" | Default |
 | Auth challenge body | "Enter your app password to continue." | Default |
 | Auth challenge CTA | "Verify" | Default — distinguishes from "Unlock" on lock screen |
-| Auth challenge cancel | "Cancel" | Default |
+| Auth challenge cancel | "Go Back" | Checker fix — communicates effect without generic label; dialog context provides noun |
 | Change password section row | "Change Password" | Default |
 | Auto-lock section row | "Auto-Lock Timeout" | Default |
 | Lock now button | "Lock Now" | Default |
