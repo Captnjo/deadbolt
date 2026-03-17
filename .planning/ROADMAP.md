@@ -13,7 +13,7 @@ Deadbolt's existing codebase has the core components partially built — axum ag
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Auth System** - Wire vault unlock and app password gate into Flutter UI with idle auto-lock (completed 2026-03-16)
-- [ ] **Phase 2: Agent API Bridge** - Expose the existing axum server to Flutter via FRB StreamSink and add key management UI
+- [x] **Phase 2: Agent API Bridge** - Expose the existing axum server to Flutter via FRB StreamSink and add key management UI (completed 2026-03-17)
 - [ ] **Phase 3: Agent Signing Prompt** - Build the dismissable overlay, intent queue, simulation results, and full lifecycle tracking
 - [ ] **Phase 4: Guardrails Engine** - Harden the existing Rust guardrails with atomic concurrency, persistence, and Flutter settings UI
 - [ ] **Phase 5: ESP32 Firmware Rewrite** - Rewrite firmware for BIP39 mnemonic generation and secure NVS storage, with Flutter backup flow
@@ -50,7 +50,7 @@ Plans:
   3. User can create an API key (shown once, then masked), copy it, and revoke it from the Agent API settings screen
   4. The quick-test section displays a ready-to-paste curl command using the user's real API token
   5. Closing the app cleanly shuts down the HTTP server; next launch can bind port 9876 without an "address in use" error
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 02-01-PLAN.md — Rust server: WalletDataSnapshot, query handlers (/balance, /tokens, /price, /history), SO_REUSEADDR, AppConfig labels
@@ -113,7 +113,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
-| 2. Agent API Bridge | 2/4 | In Progress|  |
+| 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |

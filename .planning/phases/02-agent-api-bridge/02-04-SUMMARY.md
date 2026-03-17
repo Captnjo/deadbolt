@@ -80,12 +80,53 @@ Implemented `Timer(30s)` that clears clipboard after any sensitive copy — cove
 - **Files modified:** lib/features/agent/agent_api_screen.dart
 - **Commit:** 86e95f6
 
+## Post-Checkpoint Bug Fixes
+
+After Task 1 was committed and during human verification (Task 2), four bug fixes were applied:
+
+**1. [Rule 1 - Bug] Defer provider state refresh to after dialog closes**
+- **Found during:** Task 2 human verification
+- **Issue:** Provider state refresh triggered while dialog was still open, causing state inconsistency
+- **Fix:** Deferred `ref.invalidate` / refresh calls to run after the dialog's `Future` resolves
+- **Files modified:** lib/features/agent/agent_api_screen.dart
+- **Commit:** f055f1e
+
+**2. [Rule 1 - Bug] GoRouter refreshListenable attempt (reverted)**
+- **Found during:** Task 2 human verification
+- **Issue:** GoRouter was being recreated on auth state change; attempted fix using `refreshListenable`
+- **Fix:** Reverted — original `ref.watch` pattern in `appRouterProvider` was correct
+- **Files modified:** lib/shared/router.dart (reverted in ceff8b7)
+- **Commits:** 30ff755 (attempted fix), ceff8b7 (revert)
+
+**3. [Rule 1 - Bug] Guard onWindowClose against stub throws + setPreventClose**
+- **Found during:** Task 2 human verification
+- **Issue:** `onWindowClose` in AppShell threw when Rust stubs raised `UnimplementedError`; `setPreventClose(true)` was missing so the window closed before async cleanup completed
+- **Fix:** Wrapped `forceStop()` call in try/catch; added `windowManager.setPreventClose(true)` in `initState`
+- **Files modified:** lib/shared/app_shell.dart
+- **Commit:** b12ca2d
+
+**4. [Rule 1 - Bug] Split create key into two dialogs to fix disposed controller**
+- **Found during:** Task 2 human verification
+- **Issue:** Single-dialog StatefulBuilder approach disposed the `TextEditingController` before the show-once token dialog transition completed, causing a "disposed controller" exception
+- **Fix:** Split into two separate `showDialog` calls: first for label input, second for the copy-once token display
+- **Files modified:** lib/features/agent/agent_api_screen.dart
+- **Commit:** 9237294
+
+## Deferred Testing
+
+Full E2E testing (server toggle, key CRUD, curl test, reveal/revoke, window close) deferred until FRB codegen generates real bindings from Rust plans 02-01 and 02-02. Stub-based flows verified successfully by human:
+- NavigationRail shows 5 icons with Agent API at position 4
+- Empty state displays correctly
+- Auth challenge dialog works
+- Label dialog works
+- Error handling shows graceful snackbar
+
 ## Tasks
 
 | Task | Name | Status | Commit |
 |------|------|--------|--------|
 | 1 | Build AgentApiScreen with server toggle, key management, and quick test | Complete | 86e95f6 |
-| 2 | Verify Agent API screen layout and interactions | Checkpoint (pending human verify) | — |
+| 2 | Verify Agent API screen layout and interactions | Complete (human approved) | — |
 
 ## Self-Check: PASSED
 
@@ -93,3 +134,4 @@ Implemented `Timer(30s)` that clears clipboard after any sensitive copy — cove
 - [x] Commit `86e95f6` exists in git log
 - [x] All 37 acceptance criteria met (6 grep pattern misses were formatting-only — content verified manually)
 - [x] NavigationRail has 5 destinations (grep confirmed count = 5)
+- [x] Post-checkpoint bug fixes committed: f055f1e, 30ff755, ceff8b7, b12ca2d, 9237294
