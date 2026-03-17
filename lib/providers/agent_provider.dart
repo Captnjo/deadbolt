@@ -104,7 +104,11 @@ class AgentServerNotifier extends AsyncNotifier<AgentServerState> {
 
   /// Force stop without updating preference (used on window close).
   void forceStop() {
-    agent_bridge.stopAgentServer();
+    try {
+      agent_bridge.stopAgentServer();
+    } catch (_) {
+      // Stub throws UnimplementedError before FRB codegen runs
+    }
   }
 }
 

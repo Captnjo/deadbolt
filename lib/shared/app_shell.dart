@@ -73,6 +73,7 @@ class _AppShellState extends ConsumerState<AppShell>
       curve: Curves.easeOutCubic,
     ));
     windowManager.addListener(this);
+    windowManager.setPreventClose(true);
   }
 
   @override
@@ -86,8 +87,11 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void onWindowClose() async {
     // Gracefully stop the agent server before window closes (INFR-08).
-    // stop_agent_server is a sync FRB call — sends oneshot and returns immediately.
-    ref.read(agentServerProvider.notifier).forceStop();
+    try {
+      ref.read(agentServerProvider.notifier).forceStop();
+    } catch (_) {
+      // Guard: agent bridge may be stubbed before FRB codegen
+    }
     await windowManager.destroy();
   }
 
