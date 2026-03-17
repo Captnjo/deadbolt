@@ -61,141 +61,109 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     final authed = await showAuthChallengeDialog(context);
     if (!authed || !context.mounted) return;
 
-    final labelController = TextEditingController();
-    String? createdToken;
-    bool isCreating = false;
-
-    // Capture the notifier before showing the dialog to avoid ref access during rebuild
     final keyNotifier = ref.read(agentKeyProvider.notifier);
     final currentKeyCount = ref.read(agentKeyProvider).length;
 
-    await showDialog<void>(
+    // Dialog 1: get label from user
+    final label = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            if (createdToken != null) {
-              // Phase 2: show-once token dialog
-              final tokenController =
-                  TextEditingController(text: createdToken);
-              return AlertDialog(
-                title: const Text(
-                  'API Key Created',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Copy this key now. It will not be shown again.',
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: BrandColors.textSecondary),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: tokenController,
-                        readOnly: true,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                          color: BrandColors.textSecondary,
-                        ),
-                        decoration:
-                            const InputDecoration(border: OutlineInputBorder()),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () {
-                      _copyToClipboard(createdToken!, context);
-                      Navigator.pop(ctx);
-                    },
-                    child: const Text('Copy & Close'),
-                  ),
-                ],
-              );
-            }
-
-            // Phase 1: label + create dialog
-            return AlertDialog(
-              title: const Text(
-                'Create API Key',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: labelController,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Claude agent, Trading bot',
-                        labelText: 'Label (optional)',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed:
-                      isCreating ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: isCreating
-                      ? null
-                      : () async {
-                          setDialogState(() => isCreating = true);
-                          try {
-                            final label = labelController.text.trim();
-                            final defaultLabel = label.isEmpty
-                                ? 'API Key ${currentKeyCount + 1}'
-                                : label;
-                            final token =
-                                await keyNotifier.createKey(defaultLabel);
-                            setDialogState(() {
-                              createdToken = token;
-                              isCreating = false;
-                            });
-                          } catch (e) {
-                            setDialogState(() => isCreating = false);
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text('Failed to create key: $e')),
-                              );
-                              Navigator.pop(ctx);
-                            }
-                          }
-                        },
-                  child: isCreating
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Create'),
-                ),
-              ],
-            );
-          },
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text(
+            'Create API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'e.g. Claude agent, Trading bot',
+              labelText: 'Label (optional)',
+            ),
+            onSubmitted: (value) => Navigator.pop(ctx, value),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: const Text('Create'),
+            ),
+          ],
         );
       },
     );
 
-    labelController.dispose();
+    if (label == null || !context.mounted) return;
 
-    // Refresh key list AFTER dialog closes to avoid framework assertion
+    // Create the key
+    String token;
+    try {
+      final defaultLabel = label.trim().isEmpty
+          ? 'API Key ${currentKeyCount + 1}'
+          : label.trim();
+      token = await keyNotifier.createKey(defaultLabel);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create key: $e')),
+        );
+      }
+      ref.read(agentKeyProvider.notifier).refresh();
+      return;
+    }
+
     ref.read(agentKeyProvider.notifier).refresh();
+    if (!context.mounted) return;
+
+    // Dialog 2: show the token once
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text(
+            'API Key Created',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Copy this key now. It will not be shown again.',
+                  style: TextStyle(
+                      fontSize: 14, color: BrandColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                SelectableText(
+                  token,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    color: BrandColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                _copyToClipboard(token, context);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Copy & Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _revealKey(
