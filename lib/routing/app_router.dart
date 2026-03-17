@@ -25,29 +25,16 @@ import '../src/rust/api/auth.dart' as auth_bridge;
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Bridges Riverpod provider changes to GoRouter's refreshListenable so
-/// the router is created once and only re-evaluates redirects on state changes
-/// (instead of being fully recreated, which causes _dependents.isEmpty assertions).
-class _RouterRefreshNotifier extends ChangeNotifier {
-  _RouterRefreshNotifier(Ref ref) {
-    ref.listen(authProvider, (prev, next) => notifyListeners());
-    ref.listen(needsOnboardingProvider, (prev, next) => notifyListeners());
-  }
-}
-
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final refreshNotifier = _RouterRefreshNotifier(ref);
+  final needsOnboarding = ref.watch(needsOnboardingProvider);
+  final authState = ref.watch(authProvider);
+  final isLocked = authState.status == AuthStatus.locked;
+  final hasPassword = auth_bridge.hasAppPassword();
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    refreshListenable: refreshNotifier,
-    initialLocation:
-        ref.read(needsOnboardingProvider) ? '/onboarding' : '/lock',
+    initialLocation: needsOnboarding ? '/onboarding' : '/lock',
     redirect: (context, state) {
-      final needsOnboarding = ref.read(needsOnboardingProvider);
-      final authState = ref.read(authProvider);
-      final isLocked = authState.status == AuthStatus.locked;
-      final hasPassword = auth_bridge.hasAppPassword();
 
       final path = state.uri.path;
       final onOnboarding = path == '/onboarding';
