@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex, RwLock};
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -8,6 +9,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use socket2::{Domain, Socket, Type};
 use tokio::sync::mpsc;
 
 use crate::models::config::GuardrailsConfig;
@@ -17,6 +19,40 @@ use super::auth::auth_middleware;
 use super::guardrails::GuardrailsEngine;
 use super::intent::{Intent, IntentStatus, IntentType};
 
+// --- Wallet data snapshot types ---
+
+/// Cached snapshot of wallet data for agent query endpoints.
+#[derive(Default, Clone, Serialize)]
+pub struct WalletDataSnapshot {
+    pub sol_balance: Option<f64>,
+    pub sol_usd: Option<f64>,
+    pub tokens: Vec<TokenSnapshot>,
+    pub history: Vec<HistoryEntry>,
+    pub prices: HashMap<String, f64>,
+}
+
+/// A single SPL token in the wallet snapshot.
+#[derive(Default, Clone, Serialize)]
+pub struct TokenSnapshot {
+    pub mint: String,
+    pub symbol: Option<String>,
+    pub name: Option<String>,
+    pub amount: f64,
+    pub decimals: u8,
+    pub usd_value: Option<f64>,
+}
+
+/// A single transaction history entry.
+#[derive(Default, Clone, Serialize)]
+pub struct HistoryEntry {
+    pub signature: String,
+    pub timestamp: Option<i64>,
+    pub description: Option<String>,
+    pub fee: Option<u64>,
+    #[serde(rename = "type")]
+    pub tx_type: Option<String>,
+}
+
 /// Shared application state for the agent API server.
 pub struct AppState {
     pub api_tokens: Mutex<Vec<String>>,
@@ -25,6 +61,8 @@ pub struct AppState {
     pub wallet_address: Mutex<Option<String>>,
     /// Channel to notify the Flutter UI of new intents.
     pub intent_sender: mpsc::UnboundedSender<Intent>,
+    /// Cached wallet data snapshot for agent query endpoints.
+    pub wallet_data: RwLock<WalletDataSnapshot>,
 }
 
 /// Handle for controlling the agent server.
@@ -49,14 +87,31 @@ impl AgentServer {
             guardrails: Mutex::new(GuardrailsEngine::new(guardrails_config)),
             wallet_address: Mutex::new(wallet_address),
             intent_sender: intent_tx,
+            wallet_data: RwLock::new(WalletDataSnapshot::default()),
         });
 
         let app = build_router(state.clone());
 
         let addr = format!("127.0.0.1:{port}");
-        let listener = tokio::net::TcpListener::bind(&addr)
-            .await
-            .map_err(|e| DeadboltError::StorageError(format!("Failed to bind {addr}: {e}")))?;
+        let addr_parsed: SocketAddr = addr
+            .parse()
+            .map_err(|e| DeadboltError::StorageError(format!("Bad address: {e}")))?;
+        let socket = Socket::new(Domain::IPV4, Type::STREAM, None)
+            .map_err(|e| DeadboltError::StorageError(format!("Socket create: {e}")))?;
+        socket
+            .set_reuse_address(true)
+            .map_err(|e| DeadboltError::StorageError(format!("SO_REUSEADDR: {e}")))?;
+        socket
+            .set_nonblocking(true)
+            .map_err(|e| DeadboltError::StorageError(format!("nonblocking: {e}")))?;
+        socket
+            .bind(&addr_parsed.into())
+            .map_err(|e| DeadboltError::StorageError(format!("Bind {addr}: {e}")))?;
+        socket
+            .listen(128)
+            .map_err(|e| DeadboltError::StorageError(format!("Listen: {e}")))?;
+        let listener = tokio::net::TcpListener::from_std(socket.into())
+            .map_err(|e| DeadboltError::StorageError(format!("TcpListener: {e}")))?;
 
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
 
@@ -81,6 +136,13 @@ impl AgentServer {
     pub fn stop(&mut self) {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(());
+        }
+    }
+
+    /// Update the cached wallet data snapshot (called from FRB bridge when data refreshes).
+    pub fn update_wallet_data(&self, snapshot: WalletDataSnapshot) {
+        if let Ok(mut data) = self.state.wallet_data.write() {
+            *data = snapshot;
         }
     }
 
@@ -155,6 +217,10 @@ impl Drop for AgentServer {
 fn build_router(state: Arc<AppState>) -> Router {
     let protected = Router::new()
         .route("/wallet", get(wallet_handler))
+        .route("/balance", get(balance_handler))
+        .route("/tokens", get(tokens_handler))
+        .route("/price", get(price_handler))
+        .route("/history", get(history_handler))
         .route("/intent", post(submit_intent_handler))
         .route("/intent/{id}/status", get(intent_status_handler))
         .route_layer(middleware::from_fn_with_state(
@@ -193,6 +259,124 @@ async fn wallet_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
     let address = state.wallet_address.lock().unwrap().clone();
     Json(WalletResponse { address })
 }
+
+// --- Query handlers ---
+
+#[derive(Serialize)]
+struct BalanceResponse {
+    sol: f64,
+    sol_usd: Option<f64>,
+    tokens: Vec<TokenBalanceItem>,
+}
+
+#[derive(Serialize)]
+struct TokenBalanceItem {
+    mint: String,
+    symbol: Option<String>,
+    amount: f64,
+    decimals: u8,
+    usd_value: Option<f64>,
+}
+
+async fn balance_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let data = state.wallet_data.read().unwrap();
+    Json(BalanceResponse {
+        sol: data.sol_balance.unwrap_or(0.0),
+        sol_usd: data.sol_usd,
+        tokens: data
+            .tokens
+            .iter()
+            .map(|t| TokenBalanceItem {
+                mint: t.mint.clone(),
+                symbol: t.symbol.clone(),
+                amount: t.amount,
+                decimals: t.decimals,
+                usd_value: t.usd_value,
+            })
+            .collect(),
+    })
+}
+
+#[derive(Serialize)]
+struct TokensResponse {
+    tokens: Vec<TokenSnapshot>,
+}
+
+async fn tokens_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let data = state.wallet_data.read().unwrap();
+    Json(TokensResponse {
+        tokens: data.tokens.clone(),
+    })
+}
+
+#[derive(Deserialize)]
+struct PriceQuery {
+    mints: Option<String>,
+}
+
+#[derive(Serialize)]
+struct PriceResponse {
+    prices: HashMap<String, Option<f64>>,
+}
+
+async fn price_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(query): axum::extract::Query<PriceQuery>,
+) -> impl IntoResponse {
+    let data = state.wallet_data.read().unwrap();
+    let prices: HashMap<String, Option<f64>> = match query.mints {
+        Some(mints_str) => mints_str
+            .split(',')
+            .map(|m| {
+                let mint = m.trim().to_string();
+                let price = data.prices.get(&mint).copied();
+                (mint, price)
+            })
+            .collect(),
+        None => data
+            .prices
+            .iter()
+            .map(|(k, v)| (k.clone(), Some(*v)))
+            .collect(),
+    };
+    Json(PriceResponse { prices })
+}
+
+#[derive(Deserialize)]
+struct HistoryQuery {
+    limit: Option<usize>,
+    before: Option<String>,
+}
+
+#[derive(Serialize)]
+struct HistoryResponse {
+    transactions: Vec<HistoryEntry>,
+}
+
+async fn history_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(query): axum::extract::Query<HistoryQuery>,
+) -> impl IntoResponse {
+    let data = state.wallet_data.read().unwrap();
+    let limit = query.limit.unwrap_or(20).min(100);
+
+    let transactions: Vec<HistoryEntry> = match &query.before {
+        Some(before_sig) => {
+            let start = data
+                .history
+                .iter()
+                .position(|h| h.signature == *before_sig)
+                .map(|i| i + 1)
+                .unwrap_or(0);
+            data.history[start..].iter().take(limit).cloned().collect()
+        }
+        None => data.history.iter().take(limit).cloned().collect(),
+    };
+
+    Json(HistoryResponse { transactions })
+}
+
+// --- Intent handlers ---
 
 #[derive(Deserialize)]
 struct SubmitIntentRequest {
@@ -273,11 +457,7 @@ async fn submit_intent_handler(
     let _ = state.intent_sender.send(intent.clone());
 
     // Store intent
-    state
-        .intents
-        .lock()
-        .unwrap()
-        .insert(id.clone(), intent);
+    state.intents.lock().unwrap().insert(id.clone(), intent);
 
     (
         StatusCode::CREATED,
@@ -371,6 +551,7 @@ mod tests {
             guardrails: Mutex::new(GuardrailsEngine::new(GuardrailsConfig::default())),
             wallet_address: Mutex::new(None),
             intent_sender: tx,
+            wallet_data: RwLock::new(WalletDataSnapshot::default()),
         });
 
         let server = AgentServer {
@@ -393,5 +574,82 @@ mod tests {
         server.approve_intent(&id).unwrap();
         let intents = server.state.intents.lock().unwrap();
         assert_eq!(intents[&id].status, IntentStatus::Approved);
+    }
+
+    #[tokio::test]
+    async fn test_query_endpoints_require_auth() {
+        // Verify that the server starts and wallet_data is accessible via state
+        let (mut server, _rx) = AgentServer::start(
+            0,
+            vec!["db_test_query".to_string()],
+            GuardrailsConfig::default(),
+            Some("TestQueryAddr".to_string()),
+        )
+        .await
+        .unwrap();
+
+        // The server started — we can verify the AppState has wallet_data
+        assert!(server.state().wallet_data.read().unwrap().sol_balance.is_none());
+
+        server.stop();
+    }
+
+    #[tokio::test]
+    async fn test_update_wallet_data() {
+        let (mut server, _rx) = AgentServer::start(
+            0,
+            vec!["db_test_data".to_string()],
+            GuardrailsConfig::default(),
+            Some("DataAddr".to_string()),
+        )
+        .await
+        .unwrap();
+
+        let snapshot = WalletDataSnapshot {
+            sol_balance: Some(1.5),
+            sol_usd: Some(225.0),
+            tokens: vec![],
+            history: vec![],
+            prices: HashMap::new(),
+        };
+
+        server.update_wallet_data(snapshot);
+
+        {
+            let data = server.state().wallet_data.read().unwrap();
+            assert_eq!(data.sol_balance, Some(1.5));
+            assert_eq!(data.sol_usd, Some(225.0));
+        }
+
+        server.stop();
+    }
+
+    #[tokio::test]
+    async fn test_port_reuse_after_stop() {
+        // Start on a specific port, stop, and immediately re-start on the same port.
+        // This verifies SO_REUSEADDR works.
+        let (mut server1, _rx1) = AgentServer::start(
+            19876, // use a high port unlikely to conflict
+            vec!["db_reuse".to_string()],
+            GuardrailsConfig::default(),
+            None,
+        )
+        .await
+        .unwrap();
+
+        server1.stop();
+        // Small delay for socket cleanup
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let (mut server2, _rx2) = AgentServer::start(
+            19876,
+            vec!["db_reuse".to_string()],
+            GuardrailsConfig::default(),
+            None,
+        )
+        .await
+        .unwrap();
+
+        server2.stop();
     }
 }

@@ -72,6 +72,7 @@ mod tests {
             guardrails: Mutex::new(GuardrailsEngine::new(GuardrailsConfig::default())),
             wallet_address: Mutex::new(None),
             intent_sender: tx,
+            wallet_data: std::sync::RwLock::new(super::super::server::WalletDataSnapshot::default()),
         });
 
         Router::new()
