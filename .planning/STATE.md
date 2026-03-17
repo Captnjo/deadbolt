@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-16T15:39:51.372Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-17T05:38:45.272Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
   percent: 60
 ---
 
@@ -53,6 +53,7 @@ Progress: [██████░░░░] 60%
 | Phase 01-auth-system P04 | 9 | 2 tasks | 4 files |
 | Phase 01-auth-system P03 | 22 | 2 tasks | 6 files |
 | Phase 01-auth-system P05 | 3 | 1 tasks | 3 files |
+| Phase 02-agent-api-bridge P01 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Recent decisions affecting current work:
 - [Phase 01-auth-system]: GoRouter lock redirect: watch authProvider in appRouterProvider + hasAppPassword() sync check guards all routes behind /lock when app is locked and password is set
 - [Phase 01-auth-system]: showAuthChallengeDialog helper pattern established for gating sensitive operations behind password re-entry from any BuildContext
 - [Phase 01-auth-system]: _ChangePasswordDialog co-located in security_settings_section.dart as private ConsumerStatefulWidget — only ever used from SecuritySettingsSection
+- [Phase 02-agent-api-bridge]: RwLock (not Mutex) for wallet_data — readers (agent queries) vastly outnumber writers (FRB bridge refresh), allows concurrent reads
+- [Phase 02-agent-api-bridge]: api_key_labels is separate HashMap from api_tokens — tokens stay as Vec for backwards compat; labels are opt-in metadata with serde(default)
+- [Phase 02-agent-api-bridge]: update_wallet_data() on AgentServer handle (not AppState directly) — consistent with approve/reject_intent pattern
 
 ### Pending Todos
 
@@ -89,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T15:39:51.362Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-agent-api-bridge/02-CONTEXT.md
+Last session: 2026-03-17T05:38:45.270Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

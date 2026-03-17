@@ -20,8 +20,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Agent API
 
-- [ ] **AGNT-01**: Embedded HTTP server starts on localhost:9876 when user enables it
-- [ ] **AGNT-02**: Agent authenticates with bearer token (db_ prefix)
+- [x] **AGNT-01**: Embedded HTTP server starts on localhost:9876 when user enables it
+- [x] **AGNT-02**: Agent authenticates with bearer token (db_ prefix)
 - [ ] **AGNT-03**: Agent can POST intent (send_sol, send_token, swap, sign_message)
 - [ ] **AGNT-04**: User sees dismissable signing prompt overlay with full preview when app is open
 - [ ] **AGNT-05**: Pending intents queue when user is away; user reviews queued list on return
@@ -29,7 +29,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **AGNT-07**: User can approve or reject each intent from the signing prompt
 - [ ] **AGNT-08**: Approved intent is built, signed (software or hardware), and submitted
 - [ ] **AGNT-09**: Agent can poll intent status (pending → building → signing → submitted → confirmed/failed/rejected)
-- [ ] **AGNT-10**: Query endpoints available without approval: wallet, balance, tokens, price, history
+- [x] **AGNT-10**: Query endpoints available without approval: wallet, balance, tokens, price, history
 - [ ] **AGNT-11**: User can create API keys (shown once, then masked)
 - [ ] **AGNT-12**: User can revoke API keys
 - [ ] **AGNT-13**: Quick test section generates copy-paste curl command with user's real token
@@ -61,10 +61,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **INFR-02**: ESP32 firmware uses verified entropy source (not silently weak esp_random)
 - [ ] **INFR-03**: ESP32 seed stored encrypted in NVS (not plaintext)
 - [ ] **INFR-04**: Guardrail state (whitelists) persisted to disk, survives app restart
-- [ ] **INFR-05**: Axum server migrated to 0.8 route syntax
+- [x] **INFR-05**: Axum server migrated to 0.8 route syntax
 - [x] **INFR-06**: Bearer token comparison uses constant-time equality (prevent timing attack)
 - [x] **INFR-07**: Zeroization audit: all key material on heap (Box/SecretVec), no stack copies
-- [ ] **INFR-08**: Axum server properly shuts down on app close (no orphaned port)
+- [x] **INFR-08**: Axum server properly shuts down on app close (no orphaned port)
 
 ### Navigation & Settings
 
@@ -144,8 +144,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Complete |
 | AUTH-08 | Phase 1 | Complete |
-| AGNT-01 | Phase 2 | Pending |
-| AGNT-02 | Phase 2 | Pending |
+| AGNT-01 | Phase 2 | Complete |
+| AGNT-02 | Phase 2 | Complete |
 | AGNT-03 | Phase 3 | Pending |
 | AGNT-04 | Phase 3 | Pending |
 | AGNT-05 | Phase 3 | Pending |
@@ -153,7 +153,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-07 | Phase 3 | Pending |
 | AGNT-08 | Phase 3 | Pending |
 | AGNT-09 | Phase 3 | Pending |
-| AGNT-10 | Phase 2 | Pending |
+| AGNT-10 | Phase 2 | Complete |
 | AGNT-11 | Phase 2 | Pending |
 | AGNT-12 | Phase 2 | Pending |
 | AGNT-13 | Phase 2 | Pending |
@@ -176,10 +176,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-02 | Phase 5 | Pending |
 | INFR-03 | Phase 5 | Pending |
 | INFR-04 | Phase 4 | Pending |
-| INFR-05 | Phase 2 | Pending |
+| INFR-05 | Phase 2 | Complete |
 | INFR-06 | Phase 1 | Complete |
 | INFR-07 | Phase 1 | Complete |
-| INFR-08 | Phase 2 | Pending |
+| INFR-08 | Phase 2 | Complete |
 | NAVS-01 | Phase 6 | Pending |
 | NAVS-02 | Phase 6 | Pending |
 | NAVS-03 | Phase 6 | Pending |
