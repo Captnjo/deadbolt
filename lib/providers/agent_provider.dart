@@ -126,17 +126,17 @@ class AgentKeyNotifier extends Notifier<List<agent_bridge.ApiKeyEntry>> {
   }
 
   /// Create a new key. Returns the full token string (shown once).
+  /// Does NOT auto-refresh state — caller must call refresh() after
+  /// any dialog using this result is closed, to avoid framework assertions.
   Future<String> createKey(String label) async {
     final token = await agent_bridge.createApiKey(label: label);
-    // Refresh the list
-    state = agent_bridge.listApiKeys();
     return token;
   }
 
   /// Revoke a key by full token.
+  /// Does NOT auto-refresh state — caller must call refresh() after.
   Future<void> revokeKey(String token) async {
     await agent_bridge.revokeApiKey(token: token);
-    state = agent_bridge.listApiKeys();
   }
 
   /// Get full (unmasked) key by prefix (requires prior auth challenge).

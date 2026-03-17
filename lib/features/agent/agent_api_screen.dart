@@ -65,6 +65,10 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     String? createdToken;
     bool isCreating = false;
 
+    // Capture the notifier before showing the dialog to avoid ref access during rebuild
+    final keyNotifier = ref.read(agentKeyProvider.notifier);
+    final currentKeyCount = ref.read(agentKeyProvider).length;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -152,13 +156,11 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
                           setDialogState(() => isCreating = true);
                           try {
                             final label = labelController.text.trim();
-                            final keys = ref.read(agentKeyProvider);
                             final defaultLabel = label.isEmpty
-                                ? 'API Key ${keys.length + 1}'
+                                ? 'API Key ${currentKeyCount + 1}'
                                 : label;
-                            final token = await ref
-                                .read(agentKeyProvider.notifier)
-                                .createKey(defaultLabel);
+                            final token =
+                                await keyNotifier.createKey(defaultLabel);
                             setDialogState(() {
                               createdToken = token;
                               isCreating = false;
@@ -191,6 +193,9 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     );
 
     labelController.dispose();
+
+    // Refresh key list AFTER dialog closes to avoid framework assertion
+    ref.read(agentKeyProvider.notifier).refresh();
   }
 
   Future<void> _revealKey(
@@ -301,10 +306,12 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     if (!authed || !context.mounted) return false;
 
     try {
-      final fullToken = await ref
-          .read(agentKeyProvider.notifier)
-          .getFullKey(key.tokenPrefix);
-      await ref.read(agentKeyProvider.notifier).revokeKey(fullToken);
+      final keyNotifier = ref.read(agentKeyProvider.notifier);
+      final fullToken = await keyNotifier.getFullKey(key.tokenPrefix);
+      await keyNotifier.revokeKey(fullToken);
+
+      // Refresh key list after revoke
+      keyNotifier.refresh();
 
       // If last key was revoked, stop the server
       final remainingKeys = ref.read(agentKeyProvider);
