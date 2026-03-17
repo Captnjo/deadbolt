@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,11 @@ pub struct AppConfig {
     /// Agent API bearer tokens.
     #[serde(default)]
     pub api_tokens: Vec<String>,
+
+    /// Labels for API keys: maps token string to user-defined label.
+    /// Stored separately from api_tokens for backwards compatibility.
+    #[serde(default)]
+    pub api_key_labels: HashMap<String, String>,
 
     /// Guardrails settings.
     #[serde(default)]
@@ -97,6 +103,7 @@ impl Default for AppConfig {
             active_wallet: None,
             network: default_network(),
             api_tokens: Vec::new(),
+            api_key_labels: HashMap::new(),
             guardrails: GuardrailsConfig::default(),
             onboarding_completed: false,
             helius_api_key: String::new(),
@@ -295,5 +302,30 @@ mod tests {
         assert!(json.contains("onboardingCompleted"));
         let parsed: AppConfig = serde_json::from_str(&json).unwrap();
         assert!(parsed.onboarding_completed);
+    }
+
+    #[test]
+    fn test_api_key_labels_backwards_compat() {
+        // Old config files without apiKeyLabels should default to empty HashMap
+        let json = r#"{"wallets":[],"network":"mainnet","apiTokens":["db_abc"]}"#;
+        let config: AppConfig = serde_json::from_str(json).unwrap();
+        assert!(config.api_key_labels.is_empty());
+        assert_eq!(config.api_tokens.len(), 1);
+    }
+
+    #[test]
+    fn test_api_key_labels_roundtrip() {
+        let mut config = AppConfig::default();
+        config.api_tokens.push("db_test123".to_string());
+        config
+            .api_key_labels
+            .insert("db_test123".to_string(), "Claude agent".to_string());
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("apiKeyLabels"));
+        let parsed: AppConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            parsed.api_key_labels.get("db_test123").unwrap(),
+            "Claude agent"
+        );
     }
 }
