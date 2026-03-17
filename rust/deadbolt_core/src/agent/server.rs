@@ -22,7 +22,7 @@ use super::intent::{Intent, IntentStatus, IntentType};
 // --- Wallet data snapshot types ---
 
 /// Cached snapshot of wallet data for agent query endpoints.
-#[derive(Default, Clone, Serialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct WalletDataSnapshot {
     pub sol_balance: Option<f64>,
     pub sol_usd: Option<f64>,
@@ -32,7 +32,7 @@ pub struct WalletDataSnapshot {
 }
 
 /// A single SPL token in the wallet snapshot.
-#[derive(Default, Clone, Serialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct TokenSnapshot {
     pub mint: String,
     pub symbol: Option<String>,
@@ -43,7 +43,7 @@ pub struct TokenSnapshot {
 }
 
 /// A single transaction history entry.
-#[derive(Default, Clone, Serialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
     pub signature: String,
     pub timestamp: Option<i64>,
