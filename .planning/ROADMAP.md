@@ -50,7 +50,7 @@ Plans:
   3. User can create an API key (shown once, then masked), copy it, and revoke it from the Agent API settings screen
   4. The quick-test section displays a ready-to-paste curl command using the user's real API token
   5. Closing the app cleanly shuts down the HTTP server; next launch can bind port 9876 without an "address in use" error
-**Plans:** 4 plans
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 02-01-PLAN.md — Rust server: WalletDataSnapshot, query handlers (/balance, /tokens, /price, /history), SO_REUSEADDR, AppConfig labels
@@ -113,7 +113,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
-| 2. Agent API Bridge | 0/4 | Planning complete | - |
+| 2. Agent API Bridge | 2/4 | In Progress|  |
 | 3. Agent Signing Prompt | 0/TBD | Not started | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |

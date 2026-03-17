@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-17T05:38:45.272Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-17T05:43:49.308Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 60
 ---
 
@@ -54,6 +54,7 @@ Progress: [██████░░░░] 60%
 | Phase 01-auth-system P03 | 22 | 2 tasks | 6 files |
 | Phase 01-auth-system P05 | 3 | 1 tasks | 3 files |
 | Phase 02-agent-api-bridge P01 | 3 | 2 tasks | 4 files |
+| Phase 02-agent-api-bridge P02 | 7 | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 02-agent-api-bridge]: RwLock (not Mutex) for wallet_data — readers (agent queries) vastly outnumber writers (FRB bridge refresh), allows concurrent reads
 - [Phase 02-agent-api-bridge]: api_key_labels is separate HashMap from api_tokens — tokens stay as Vec for backwards compat; labels are opt-in metadata with serde(default)
 - [Phase 02-agent-api-bridge]: update_wallet_data() on AgentServer handle (not AppState directly) — consistent with approve/reject_intent pattern
+- [Phase 02-agent-api-bridge]: start_agent_server is pub async fn — FRB v2 runs on tokio runtime, async correct, avoids block_on anti-pattern
+- [Phase 02-agent-api-bridge]: Deserialize added to WalletDataSnapshot/TokenSnapshot/HistoryEntry in deadbolt_core — required for serde_json::from_str in bridge, no behavioral change to server
+- [Phase 02-agent-api-bridge]: _intent_rx dropped for now — Phase 3 will wire to Flutter via StreamSink for signing prompt notifications
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T05:38:45.270Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-17T05:43:49.306Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
