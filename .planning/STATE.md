@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-17T05:48:52.329Z"
+stopped_at: "Checkpoint: 02-04 Task 2 — awaiting human verification of Agent API screen"
+last_updated: "2026-03-17T05:53:01.919Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 60
 ---
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 60%
 | Phase 02-agent-api-bridge P01 | 3 | 2 tasks | 4 files |
 | Phase 02-agent-api-bridge P02 | 7 | 1 tasks | 4 files |
 | Phase 02-agent-api-bridge P03 | 3 | 3 tasks | 7 files |
+| Phase 02-agent-api-bridge P04 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase 02-agent-api-bridge]: Auto-start in build() gates on BOTH agent_server_enabled pref AND activeWalletProvider != null (Pitfall 6 from RESEARCH.md)
 - [Phase 02-agent-api-bridge]: [02-03]: WindowListener.onWindowClose calls forceStop() (no pref update) then windowManager.destroy() - preference unchanged so next launch restores auto-start
 - [Phase 02-agent-api-bridge]: [02-03]: agent.dart created as typed stub (UnimplementedError) per established auth.dart pattern
+- [Phase 02-agent-api-bridge]: Clipboard auto-clear 30s timer implemented proactively in AgentApiScreen as canonical sensitive-copy use case (PLSH-02)
+- [Phase 02-agent-api-bridge]: Copy curl command gates on auth challenge to retrieve full token — masked token shown in display only
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T05:48:52.327Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-03-17T05:53:01.917Z
+Stopped at: Checkpoint: 02-04 Task 2 — awaiting human verification of Agent API screen
 Resume file: None
