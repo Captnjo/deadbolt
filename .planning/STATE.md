@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-17T05:43:49.308Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-17T05:48:52.329Z"
 last_activity: "2026-03-16 — Completed 01-04: Password creation step in onboarding wizard + PasswordStrengthMeter widget"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 60
 ---
 
@@ -55,6 +55,7 @@ Progress: [██████░░░░] 60%
 | Phase 01-auth-system P05 | 3 | 1 tasks | 3 files |
 | Phase 02-agent-api-bridge P01 | 3 | 2 tasks | 4 files |
 | Phase 02-agent-api-bridge P02 | 7 | 1 tasks | 4 files |
+| Phase 02-agent-api-bridge P03 | 3 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,10 @@ Recent decisions affecting current work:
 - [Phase 02-agent-api-bridge]: start_agent_server is pub async fn — FRB v2 runs on tokio runtime, async correct, avoids block_on anti-pattern
 - [Phase 02-agent-api-bridge]: Deserialize added to WalletDataSnapshot/TokenSnapshot/HistoryEntry in deadbolt_core — required for serde_json::from_str in bridge, no behavioral change to server
 - [Phase 02-agent-api-bridge]: _intent_rx dropped for now — Phase 3 will wire to Flutter via StreamSink for signing prompt notifications
+- [Phase 02-agent-api-bridge]: AgentServerState uses const named constructors (.stopped(), .running(port), .error(msg)) for clean pattern-matching in UI
+- [Phase 02-agent-api-bridge]: Auto-start in build() gates on BOTH agent_server_enabled pref AND activeWalletProvider != null (Pitfall 6 from RESEARCH.md)
+- [Phase 02-agent-api-bridge]: [02-03]: WindowListener.onWindowClose calls forceStop() (no pref update) then windowManager.destroy() - preference unchanged so next launch restores auto-start
+- [Phase 02-agent-api-bridge]: [02-03]: agent.dart created as typed stub (UnimplementedError) per established auth.dart pattern
 
 ### Pending Todos
 
@@ -97,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T05:43:49.306Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-03-17T05:48:52.327Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

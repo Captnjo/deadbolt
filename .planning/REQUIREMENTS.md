@@ -30,11 +30,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **AGNT-08**: Approved intent is built, signed (software or hardware), and submitted
 - [ ] **AGNT-09**: Agent can poll intent status (pending → building → signing → submitted → confirmed/failed/rejected)
 - [x] **AGNT-10**: Query endpoints available without approval: wallet, balance, tokens, price, history
-- [ ] **AGNT-11**: User can create API keys (shown once, then masked)
-- [ ] **AGNT-12**: User can revoke API keys
+- [x] **AGNT-11**: User can create API keys (shown once, then masked)
+- [x] **AGNT-12**: User can revoke API keys
 - [ ] **AGNT-13**: Quick test section generates copy-paste curl command with user's real token
-- [ ] **AGNT-14**: Agent API has its own sidebar entry (always visible, guides setup if not configured)
-- [ ] **AGNT-15**: Server status indicator shows running/stopped state
+- [x] **AGNT-14**: Agent API has its own sidebar entry (always visible, guides setup if not configured)
+- [x] **AGNT-15**: Server status indicator shows running/stopped state
 
 ### Guardrails
 
@@ -154,11 +154,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-08 | Phase 3 | Pending |
 | AGNT-09 | Phase 3 | Pending |
 | AGNT-10 | Phase 2 | Complete |
-| AGNT-11 | Phase 2 | Pending |
-| AGNT-12 | Phase 2 | Pending |
+| AGNT-11 | Phase 2 | Complete |
+| AGNT-12 | Phase 2 | Complete |
 | AGNT-13 | Phase 2 | Pending |
-| AGNT-14 | Phase 2 | Pending |
-| AGNT-15 | Phase 2 | Pending |
+| AGNT-14 | Phase 2 | Complete |
+| AGNT-15 | Phase 2 | Complete |
 | GRDL-01 | Phase 4 | Pending |
 | GRDL-02 | Phase 4 | Pending |
 | GRDL-03 | Phase 4 | Pending |
