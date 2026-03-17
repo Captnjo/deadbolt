@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:window_manager/window_manager.dart';
 
+import '../providers/agent_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_emoji_provider.dart';
 import '../providers/wallet_provider.dart';
@@ -19,7 +21,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WindowListener {
   late final AnimationController _drawerController;
   late final Animation<Offset> _slideAnimation;
 
@@ -43,13 +45,18 @@ class _AppShellState extends ConsumerState<AppShell>
       label: Text('Contacts'),
     ),
     NavigationRailDestination(
+      icon: Icon(Icons.lan_outlined),
+      selectedIcon: Icon(Icons.lan),
+      label: Text('Agent API'),
+    ),
+    NavigationRailDestination(
       icon: Icon(Icons.settings_outlined),
       selectedIcon: Icon(Icons.settings),
       label: Text('Settings'),
     ),
   ];
 
-  static const _routes = ['/dashboard', '/history', '/address-book', '/settings'];
+  static const _routes = ['/dashboard', '/history', '/address-book', '/agent-api', '/settings'];
 
   @override
   void initState() {
@@ -65,13 +72,23 @@ class _AppShellState extends ConsumerState<AppShell>
       parent: _drawerController,
       curve: Curves.easeOutCubic,
     ));
+    windowManager.addListener(this);
   }
 
   @override
   void dispose() {
+    windowManager.removeListener(this);
     _drawerController.dispose();
     _activityFocusNode.dispose();
     super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    // Gracefully stop the agent server before window closes (INFR-08).
+    // stop_agent_server is a sync FRB call — sends oneshot and returns immediately.
+    ref.read(agentServerProvider.notifier).forceStop();
+    await windowManager.destroy();
   }
 
   void _openDrawer() => _drawerController.forward();
