@@ -32,7 +32,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **AGNT-10**: Query endpoints available without approval: wallet, balance, tokens, price, history
 - [x] **AGNT-11**: User can create API keys (shown once, then masked)
 - [x] **AGNT-12**: User can revoke API keys
-- [ ] **AGNT-13**: Quick test section generates copy-paste curl command with user's real token
+- [x] **AGNT-13**: Quick test section generates copy-paste curl command with user's real token
 - [x] **AGNT-14**: Agent API has its own sidebar entry (always visible, guides setup if not configured)
 - [x] **AGNT-15**: Server status indicator shows running/stopped state
 
@@ -156,7 +156,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-10 | Phase 2 | Complete |
 | AGNT-11 | Phase 2 | Complete |
 | AGNT-12 | Phase 2 | Complete |
-| AGNT-13 | Phase 2 | Pending |
+| AGNT-13 | Phase 2 | Complete |
 | AGNT-14 | Phase 2 | Complete |
 | AGNT-15 | Phase 2 | Complete |
 | GRDL-01 | Phase 4 | Pending |
