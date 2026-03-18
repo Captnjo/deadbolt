@@ -57,7 +57,7 @@ Source: brand_theme.dart TextTheme + measured usage in agent_api_screen.dart, se
 |------|------|--------|-------------|------------------|
 | Display | 24px | 700 (bold) | 1.2 | Screen heading "Agent API", bottom sheet intent type header |
 | Heading | 20px | 700 (bold) | 1.2 | Dialog titles, confirmation header in signing progress view |
-| Body | 14px | 400 (regular) | 1.5 | Intent preview field values, queue row descriptions, simulation status text, error messages |
+| Body | 14px | 400 (regular) | 1.5 | Intent preview field values, queue row descriptions, simulation status text, error messages. Also used at weight 700 for in-sheet lifecycle status labels ("Signing...", "Submitting..."). |
 | Label | 12px | 400 (regular) | 1.4 | Section sub-labels (textSecondary), monospace addresses, masked keys, fee estimate values |
 
 Section headers (e.g. "PENDING REQUESTS", "API KEYS"): 14px, weight 700, textSecondary color — matches existing AgentApiScreen section header pattern.
@@ -172,8 +172,8 @@ After approve is tapped, the preview content is replaced by a lifecycle progress
 
 | Lifecycle step | Visual |
 |----------------|--------|
-| Signing | `CircularProgressIndicator` (accent, size 24px) + "Signing..." (16px bold) |
-| Submitting | `CircularProgressIndicator` (accent, size 24px) + "Submitting..." (16px bold) |
+| Signing | `CircularProgressIndicator` (accent, size 24px) + "Signing..." (14px bold) |
+| Submitting | `CircularProgressIndicator` (accent, size 24px) + "Submitting..." (14px bold) |
 | Confirmed | `Icons.check_circle` (48px success green) + "Confirmed" (20px bold) + truncated signature (12px monospace textSecondary) — auto-dismisses after 3 seconds |
 | Failed | `Icons.error_outline` (48px error red) + error message (14px textSecondary) + [Retry] (outlined, primary) + [Dismiss] (text button) |
 
