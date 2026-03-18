@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 03-05-PLAN.md: sign_message bridge function and SignMessageIntent wiring"
-last_updated: "2026-03-18T14:21:16.534Z"
+stopped_at: "Completed 03-06-PLAN.md: Background simulation for SendSol and SendToken intents"
+last_updated: "2026-03-18T14:22:14.877Z"
 last_activity: "2026-03-17 — Completed 02-04: Agent API Dashboard Screen with server toggle, key management, and curl test section"
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 100
 ---
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100%
 | Phase 03-agent-signing-prompt P02 | 3 | 2 tasks | 4 files |
 | Phase 03-agent-signing-prompt P03 | 4 | 2 tasks | 3 files |
 | Phase 03-agent-signing-prompt P05 | 8 | 2 tasks | 7 files |
+| Phase 03-agent-signing-prompt P06 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@ Recent decisions affecting current work:
 - [Phase 03-agent-signing-prompt]: showSigningPrompt() top-level helper pattern for consistent call site from AppShell auto-show and AgentApiScreen queue Review button
 - [Phase 03-agent-signing-prompt]: sign_message placed in sign.rs (not agent.rs) — FRB generates it into stable sign.dart; SignedTxDto reused with empty base64 for message signing
 - [Phase 03-agent-signing-prompt]: isSignMessage early-return in approve() skips sendTransaction and pollConfirmation — clean separation of message-signing vs transaction-submission paths
+- [Phase 03-agent-signing-prompt]: build_unsigned_legacy mirrors build_sign_legacy without tx.sign() — same instruction pipeline, zeroed signatures for simulateTransaction
+- [Phase 03-agent-signing-prompt]: Placeholder blockhash 11111111111111111111111111111111 in unsigned tx — RPC replaces via replaceRecentBlockhash=true so no fresh blockhash needed in Rust
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T14:21:16.531Z
-Stopped at: Completed 03-05-PLAN.md: sign_message bridge function and SignMessageIntent wiring
+Last session: 2026-03-18T14:22:14.875Z
+Stopped at: Completed 03-06-PLAN.md: Background simulation for SendSol and SendToken intents
 Resume file: None

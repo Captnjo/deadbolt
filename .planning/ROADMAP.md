@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Auth System** - Wire vault unlock and app password gate into Flutter UI with idle auto-lock (completed 2026-03-16)
 - [x] **Phase 2: Agent API Bridge** - Expose the existing axum server to Flutter via FRB StreamSink and add key management UI (completed 2026-03-17)
-- [ ] **Phase 3: Agent Signing Prompt** - Build the dismissable overlay, intent queue, simulation results, and full lifecycle tracking
+- [x] **Phase 3: Agent Signing Prompt** - Build the dismissable overlay, intent queue, simulation results, and full lifecycle tracking (completed 2026-03-18)
 - [ ] **Phase 4: Guardrails Engine** - Harden the existing Rust guardrails with atomic concurrency, persistence, and Flutter settings UI
 - [ ] **Phase 5: ESP32 Firmware Rewrite** - Rewrite firmware for BIP39 mnemonic generation and secure NVS storage, with Flutter backup flow
 - [ ] **Phase 6: Navigation, Settings, and Polish** - Add sidebar entries, settings sections, wallet rename, and UX polish items
@@ -68,7 +68,7 @@ Plans:
   3. Transaction simulation runs in the background; the signing prompt updates in place when simulation results arrive
   4. Approving an intent causes the transaction to be built, signed (software or hardware wallet), and submitted; the agent can poll the intent status through to confirmed/failed/rejected
   5. Rejecting an intent returns a structured rejection error to the polling agent immediately
-**Plans:** 6 plans (4 executed, 2 gap closure)
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] 03-01-PLAN.md — Rust IntentType SignMessage + FRB bridge intent functions + Dart stubs
@@ -122,7 +122,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 |-------|----------------|--------|-----------|
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
-| 3. Agent Signing Prompt | 4/6 | In Progress|  |
+| 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
 | 6. Navigation, Settings, and Polish | 0/TBD | Not started | - |
