@@ -23,6 +23,9 @@ pub enum IntentType {
         amount_lamports: u64,
         lst_mint: String,
     },
+    SignMessage {
+        message: String, // hex-encoded bytes
+    },
 }
 
 /// Status of an intent through its lifecycle.
@@ -79,6 +82,41 @@ impl Intent {
                 amount_lamports, ..
             } => Some(*amount_lamports as f64 / 1_000_000_000.0),
             _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sign_message_serde_roundtrip() {
+        let intent_type = IntentType::SignMessage {
+            message: "48656c6c6f".to_string(),
+        };
+        let json = serde_json::to_string(&intent_type).unwrap();
+        assert!(json.contains("\"type\":\"sign_message\""));
+        assert!(json.contains("\"message\":\"48656c6c6f\""));
+        let parsed: IntentType = serde_json::from_str(&json).unwrap();
+        match parsed {
+            IntentType::SignMessage { message } => assert_eq!(message, "48656c6c6f"),
+            _ => panic!("Expected SignMessage variant"),
+        }
+    }
+
+    #[test]
+    fn test_all_intent_types_serde() {
+        let types = vec![
+            IntentType::SendSol { to: "abc".into(), lamports: 1000 },
+            IntentType::SendToken { to: "abc".into(), mint: "def".into(), amount: 500 },
+            IntentType::Swap { input_mint: "a".into(), output_mint: "b".into(), amount: 100, slippage_bps: Some(50) },
+            IntentType::Stake { amount_lamports: 2000, lst_mint: "lst".into() },
+            IntentType::SignMessage { message: "deadbeef".into() },
+        ];
+        for t in types {
+            let json = serde_json::to_string(&t).unwrap();
+            let _parsed: IntentType = serde_json::from_str(&json).unwrap();
         }
     }
 }

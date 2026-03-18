@@ -162,6 +162,7 @@ fn intent_mint(intent: &Intent) -> Option<String> {
         super::intent::IntentType::Swap { input_mint, .. } => Some(input_mint.clone()),
         super::intent::IntentType::Stake { lst_mint, .. } => Some(lst_mint.clone()),
         super::intent::IntentType::SendSol { .. } => None,
+        super::intent::IntentType::SignMessage { .. } => None,
     }
 }
 
