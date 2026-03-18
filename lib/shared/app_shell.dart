@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../features/agent/signing_prompt_sheet.dart';
 import '../providers/agent_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/intent_provider.dart';
 import '../providers/wallet_emoji_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../routing/app_router.dart';
 import '../theme/brand_theme.dart';
 import 'widgets/wallet_drawer.dart';
 
@@ -27,34 +30,6 @@ class _AppShellState extends ConsumerState<AppShell>
 
   /// FocusNode for KeyboardListener activity detection.
   final FocusNode _activityFocusNode = FocusNode();
-
-  static const _destinations = [
-    NavigationRailDestination(
-      icon: Icon(Icons.dashboard_outlined),
-      selectedIcon: Icon(Icons.dashboard),
-      label: Text('Dashboard'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.history_outlined),
-      selectedIcon: Icon(Icons.history),
-      label: Text('History'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.contacts_outlined),
-      selectedIcon: Icon(Icons.contacts),
-      label: Text('Contacts'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.lan_outlined),
-      selectedIcon: Icon(Icons.lan),
-      label: Text('Agent API'),
-    ),
-    NavigationRailDestination(
-      icon: Icon(Icons.settings_outlined),
-      selectedIcon: Icon(Icons.settings),
-      label: Text('Settings'),
-    ),
-  ];
 
   static const _routes = ['/dashboard', '/history', '/address-book', '/agent-api', '/settings'];
 
@@ -112,6 +87,72 @@ class _AppShellState extends ConsumerState<AppShell>
     final activeAddress = ref.watch(activeWalletProvider);
     final emojiMap = ref.watch(walletEmojiProvider).valueOrNull ?? {};
     final wallets = ref.watch(walletListProvider).valueOrNull ?? [];
+
+    // Badge count for Agent API icon.
+    final pendingCount = ref.watch(pendingIntentCountProvider);
+
+    // Auto-show signing prompt when a new intent arrives and app is unlocked.
+    ref.listen<PendingIntent?>(firstPendingIntentProvider, (prev, next) {
+      if (next != null && prev?.id != next.id) {
+        final authState = ref.read(authProvider);
+        if (authState.status == AuthStatus.locked) return;
+
+        final navKey = ref.read(rootNavigatorKeyProvider);
+        final navContext = navKey.currentContext;
+        if (navContext == null) return;
+
+        // Only show if no modal is currently on top.
+        final route = ModalRoute.of(navContext);
+        if (route != null && !route.isCurrent) return;
+
+        showSigningPrompt(navContext, next.id);
+      }
+    });
+
+    // Resubscribe intent stream when the server starts.
+    ref.listen(agentServerProvider, (prev, next) {
+      final serverState = next.valueOrNull;
+      if (serverState?.status == ServerStatus.running) {
+        ref.read(intentProvider.notifier).resubscribe();
+      }
+    });
+
+    // Build destinations dynamically so Agent API icon can carry a badge.
+    final destinations = <NavigationRailDestination>[
+      const NavigationRailDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: Text('Dashboard'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.history_outlined),
+        selectedIcon: Icon(Icons.history),
+        label: Text('History'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.contacts_outlined),
+        selectedIcon: Icon(Icons.contacts),
+        label: Text('Contacts'),
+      ),
+      NavigationRailDestination(
+        icon: Badge(
+          isLabelVisible: pendingCount > 0,
+          label: Text('$pendingCount', style: const TextStyle(fontSize: 10)),
+          child: const Icon(Icons.lan_outlined),
+        ),
+        selectedIcon: Badge(
+          isLabelVisible: pendingCount > 0,
+          label: Text('$pendingCount', style: const TextStyle(fontSize: 10)),
+          child: const Icon(Icons.lan),
+        ),
+        label: const Text('Agent API'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings),
+        label: Text('Settings'),
+      ),
+    ];
 
     // Resolve active wallet emoji
     String activeEmoji = '🔑';
@@ -187,7 +228,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 ),
               ),
             ),
-            destinations: _destinations,
+            destinations: destinations,
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(

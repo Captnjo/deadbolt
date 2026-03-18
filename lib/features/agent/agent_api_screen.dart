@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/intent.dart';
 import '../../providers/agent_provider.dart';
+import '../../providers/intent_provider.dart';
 import '../../theme/brand_theme.dart';
 import '../lock/auth_challenge_dialog.dart';
 import '../../src/rust/api/agent.dart' as agent_bridge;
+import 'signing_prompt_sheet.dart';
 
 class AgentApiScreen extends ConsumerStatefulWidget {
   const AgentApiScreen({super.key});
@@ -332,6 +335,11 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     final keys = ref.watch(agentKeyProvider);
     final hasApiKeys = ref.watch(hasApiKeysProvider);
 
+    // Pending intents for the queue section.
+    final pendingIntents = ref.watch(intentProvider)
+        .where((i) => i.lifecycle == IntentLifecycle.pending)
+        .toList();
+
     // Derive server state values
     final serverState = serverAsync.valueOrNull;
     final isRunning = serverState?.status == ServerStatus.running;
@@ -372,6 +380,48 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 24),
+
+        // ---- Section: Pending Requests (conditional) ----
+        if (pendingIntents.isNotEmpty) ...[
+          const Text(
+            'PENDING REQUESTS',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: BrandColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...pendingIntents.map((intent) => Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  intent.type.summary,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                subtitle: Text(
+                  intent.timeAgo,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: BrandColors.textSecondary,
+                  ),
+                ),
+                trailing: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onPressed: () => showSigningPrompt(context, intent.id),
+                  child: const Text('Review'),
+                ),
+              ),
+              const Divider(),
+            ],
+          )),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+        ],
 
         // ---- Section: Server ----
         const Text(
