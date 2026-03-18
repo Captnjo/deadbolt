@@ -48,3 +48,37 @@ Future<void> updateAgentWalletData({
   required String pricesJson,
 }) =>
     throw UnimplementedError('FRB codegen required');
+
+class IntentEvent {
+  final String id;
+  final String intentTypeJson;
+  final int createdAt;
+  final String apiTokenPrefix;
+  IntentEvent({
+    required this.id,
+    required this.intentTypeJson,
+    required this.createdAt,
+    required this.apiTokenPrefix,
+  });
+
+  @override
+  String toString() =>
+      'IntentEvent(id: $id, createdAt: $createdAt, apiTokenPrefix: $apiTokenPrefix)';
+}
+
+Stream<IntentEvent> streamIntents() =>
+    throw UnimplementedError('FRB codegen required');
+
+Future<void> approveIntent({required String intentId}) =>
+    throw UnimplementedError('FRB codegen required');
+
+Future<void> rejectIntent({required String intentId}) =>
+    throw UnimplementedError('FRB codegen required');
+
+Future<void> updateIntentStatus({
+  required String intentId,
+  required String status,
+  String? signature,
+  String? error,
+}) =>
+    throw UnimplementedError('FRB codegen required');
