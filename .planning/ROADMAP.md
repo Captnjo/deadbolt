@@ -68,7 +68,13 @@ Plans:
   3. Transaction simulation runs in the background; the signing prompt updates in place when simulation results arrive
   4. Approving an intent causes the transaction to be built, signed (software or hardware wallet), and submitted; the agent can poll the intent status through to confirmed/failed/rejected
   5. Rejecting an intent returns a structured rejection error to the polling agent immediately
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Rust IntentType SignMessage + FRB bridge intent functions + Dart stubs
+- [ ] 03-02-PLAN.md — Dart intent model + IntentNotifier with signing pipeline + navigator key
+- [ ] 03-03-PLAN.md — Signing prompt bottom sheet + queue section + NavigationRail badge + auto-show
+- [ ] 03-04-PLAN.md — E2E human verification of full signing prompt system
 
 ### Phase 4: Guardrails Engine
 **Goal**: Configurable transaction guardrails enforce user-defined limits on all transactions — agent and manual — with bypass requiring the app password
@@ -114,11 +120,11 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 |-------|----------------|--------|-----------|
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
-| 3. Agent Signing Prompt | 0/TBD | Not started | - |
+| 3. Agent Signing Prompt | 0/4 | Planning complete | - |
 | 4. Guardrails Engine | 0/TBD | Not started | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
 | 6. Navigation, Settings, and Polish | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-16 after Phase 2 planning complete*
+*Last updated: 2026-03-18 after Phase 3 planning complete*
