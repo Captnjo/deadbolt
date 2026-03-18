@@ -130,6 +130,19 @@ Each task was committed atomically:
 - GoRouter redirect logic complete — /lock route integrated, lock/unlock navigation flow ready
 - Blocker (pre-existing): Run `flutter_rust_bridge_codegen generate` from project root when Flutter toolchain is available to replace auth.dart stub with real FFI calls
 
+## Self-Check: PASSED
+
+All files verified on disk:
+- FOUND: lib/providers/auth_provider.dart
+- FOUND: lib/src/rust/api/auth.dart
+- FOUND: lib/features/lock/lock_screen.dart
+- FOUND: .planning/phases/01-auth-system/01-03-SUMMARY.md
+
+All commits verified in git log:
+- FOUND: b07fd25 - feat(01-03): create AuthProvider with idle timer and lock/unlock logic
+- FOUND: fdefb8e - feat(01-03): create lock screen and wire GoRouter redirect + activity detection
+- FOUND: fc2009a - docs(01-03): complete Flutter auth provider + lock screen plan
+
 ---
 *Phase: 01-auth-system*
 *Completed: 2026-03-16*
