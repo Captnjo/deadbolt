@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 03-02-PLAN.md: Dart intent model, IntentNotifier with signing pipeline"
-last_updated: "2026-03-18T07:01:18.355Z"
+stopped_at: "Completed 03-03-PLAN.md: Signing prompt bottom sheet, NavigationRail badge, Pending Requests queue, global auto-show"
+last_updated: "2026-03-18T07:07:18.893Z"
 last_activity: "2026-03-17 — Completed 02-04: Agent API Dashboard Screen with server toggle, key management, and curl test section"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 100
 ---
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 | Phase 02-agent-api-bridge P04 | 5 | 2 tasks | 4 files |
 | Phase 03-agent-signing-prompt P01 | 6 | 2 tasks | 5 files |
 | Phase 03-agent-signing-prompt P02 | 3 | 2 tasks | 4 files |
+| Phase 03-agent-signing-prompt P03 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 03-agent-signing-prompt]: crate::frb_generated::StreamSink used in bridge — flutter_rust_bridge::StreamSink removed from root in FRB 2.x
 - [Phase 03-agent-signing-prompt]: signMessage stub added to agent.dart (not send.dart) — agent.dart is hand-written stub, send.dart is FRB-generated and must not be modified
 - [Phase 03-agent-signing-prompt]: Simulation deferred (SimulationPhase.idle) for SendSol/SendToken — buildUnsignedSendSol/buildUnsignedSendToken don't exist in FRB-generated send.dart; requires future Rust-side unsigned tx builder
+- [Phase 03-agent-signing-prompt]: Dynamic NavigationRailDestination list in build() for Badge widget — requires runtime pendingCount via ref.watch
+- [Phase 03-agent-signing-prompt]: showSigningPrompt() top-level helper pattern for consistent call site from AppShell auto-show and AgentApiScreen queue Review button
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:01:18.353Z
-Stopped at: Completed 03-02-PLAN.md: Dart intent model, IntentNotifier with signing pipeline
+Last session: 2026-03-18T07:07:18.891Z
+Stopped at: Completed 03-03-PLAN.md: Signing prompt bottom sheet, NavigationRail badge, Pending Requests queue, global auto-show
 Resume file: None
