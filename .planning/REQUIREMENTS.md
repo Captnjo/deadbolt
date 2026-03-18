@@ -22,13 +22,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **AGNT-01**: Embedded HTTP server starts on localhost:9876 when user enables it
 - [x] **AGNT-02**: Agent authenticates with bearer token (db_ prefix)
-- [ ] **AGNT-03**: Agent can POST intent (send_sol, send_token, swap, sign_message)
+- [x] **AGNT-03**: Agent can POST intent (send_sol, send_token, swap, sign_message)
 - [ ] **AGNT-04**: User sees dismissable signing prompt overlay with full preview when app is open
 - [ ] **AGNT-05**: Pending intents queue when user is away; user reviews queued list on return
 - [ ] **AGNT-06**: Transaction simulation runs in background; prompt updates with results
-- [ ] **AGNT-07**: User can approve or reject each intent from the signing prompt
+- [x] **AGNT-07**: User can approve or reject each intent from the signing prompt
 - [ ] **AGNT-08**: Approved intent is built, signed (software or hardware), and submitted
-- [ ] **AGNT-09**: Agent can poll intent status (pending → building → signing → submitted → confirmed/failed/rejected)
+- [x] **AGNT-09**: Agent can poll intent status (pending → building → signing → submitted → confirmed/failed/rejected)
 - [x] **AGNT-10**: Query endpoints available without approval: wallet, balance, tokens, price, history
 - [x] **AGNT-11**: User can create API keys (shown once, then masked)
 - [x] **AGNT-12**: User can revoke API keys
@@ -146,13 +146,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-08 | Phase 1 | Complete |
 | AGNT-01 | Phase 2 | Complete |
 | AGNT-02 | Phase 2 | Complete |
-| AGNT-03 | Phase 3 | Pending |
+| AGNT-03 | Phase 3 | Complete |
 | AGNT-04 | Phase 3 | Pending |
 | AGNT-05 | Phase 3 | Pending |
 | AGNT-06 | Phase 3 | Pending |
-| AGNT-07 | Phase 3 | Pending |
+| AGNT-07 | Phase 3 | Complete |
 | AGNT-08 | Phase 3 | Pending |
-| AGNT-09 | Phase 3 | Pending |
+| AGNT-09 | Phase 3 | Complete |
 | AGNT-10 | Phase 2 | Complete |
 | AGNT-11 | Phase 2 | Complete |
 | AGNT-12 | Phase 2 | Complete |
