@@ -45,7 +45,7 @@ Declared values (must be multiples of 4). Source: observed in agent_api_screen.d
 Exceptions:
 - Bottom sheet drag handle: 4px height, 32px wide, centered — does not fall on 8-point scale; use 4px height as design exception for drag affordance
 - Touch targets for Approve/Reject buttons: minimum 48px height (accessibility requirement, macOS pointer target minimum)
-- NavigationRail badge: 10px font size (label inside Badge widget, system constraint)
+- NavigationRail badge label: uses Material 3 Badge widget default — font size is system-controlled and not part of the project type scale
 
 ---
 
@@ -204,7 +204,7 @@ Agent API destination icon wrapped in Material 3 `Badge` widget.
 | Property | Value |
 |----------|-------|
 | `isLabelVisible` | `pendingCount > 0` |
-| `label` | `Text('$pendingCount', style: TextStyle(fontSize: 10))` |
+| `label` | `Text('$pendingCount')` — font size system-controlled by Material 3 Badge widget |
 | Badge color | `colorScheme.primary` (accent `#F87040`) — Material 3 default |
 | Badge text color | `Colors.black` — matches accent button foreground |
 
