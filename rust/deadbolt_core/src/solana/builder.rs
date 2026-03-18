@@ -112,6 +112,78 @@ pub fn build_and_sign_send_token(
     build_sign_legacy(instructions, &params.from, &params.recent_blockhash, signer)
 }
 
+/// Build an unsigned SOL transfer transaction (for simulation).
+/// Returns base64-encoded transaction with zeroed signatures.
+/// Use with simulateTransaction (sigVerify=false, replaceRecentBlockhash=true).
+pub fn build_unsigned_send_sol(params: &SendSolParams) -> Result<String, DeadboltError> {
+    let mut instructions: Vec<Instruction> = Vec::new();
+
+    if let Some(limit) = params.compute_unit_limit {
+        instructions.push(compute_budget::set_compute_unit_limit(limit));
+    }
+    if let Some(price) = params.compute_unit_price {
+        instructions.push(compute_budget::set_compute_unit_price(price));
+    }
+
+    instructions.push(system_program::transfer(&params.from, &params.to, params.lamports));
+
+    if let Some(tip) = params.jito_tip_lamports {
+        instructions.push(jito_tip::tip_instruction(&params.from, tip)?);
+    }
+
+    build_unsigned_legacy(instructions, &params.from, &params.recent_blockhash)
+}
+
+/// Build an unsigned SPL token transfer transaction (for simulation).
+/// Returns base64-encoded transaction with zeroed signatures.
+/// Use with simulateTransaction (sigVerify=false, replaceRecentBlockhash=true).
+pub fn build_unsigned_send_token(params: &SendTokenParams) -> Result<String, DeadboltError> {
+    let mut instructions: Vec<Instruction> = Vec::new();
+
+    if let Some(limit) = params.compute_unit_limit {
+        instructions.push(compute_budget::set_compute_unit_limit(limit));
+    }
+    if let Some(price) = params.compute_unit_price {
+        instructions.push(compute_budget::set_compute_unit_price(price));
+    }
+
+    let from_ata = token_program::associated_token_address(&params.from, &params.mint)?;
+    let to_ata = token_program::associated_token_address(&params.to, &params.mint)?;
+
+    if params.create_ata_if_needed {
+        instructions.push(token_program::create_associated_token_account(
+            &params.from,
+            &params.to,
+            &params.mint,
+        )?);
+    }
+
+    instructions.push(token_program::transfer(
+        &from_ata,
+        &to_ata,
+        &params.from,
+        params.amount,
+    ));
+
+    if let Some(tip) = params.jito_tip_lamports {
+        instructions.push(jito_tip::tip_instruction(&params.from, tip)?);
+    }
+
+    build_unsigned_legacy(instructions, &params.from, &params.recent_blockhash)
+}
+
+/// Build an unsigned legacy transaction and return base64.
+/// Creates a transaction with zeroed signatures — suitable for simulation.
+fn build_unsigned_legacy(
+    instructions: Vec<Instruction>,
+    fee_payer: &SolanaPublicKey,
+    recent_blockhash: &str,
+) -> Result<String, DeadboltError> {
+    let message = Message::new(fee_payer, recent_blockhash, &instructions)?;
+    let tx = Transaction::new(message); // zeroed signatures, no signing step
+    Ok(tx.serialize_base64())
+}
+
 /// Build a legacy transaction from instructions, sign it, and return base64.
 fn build_sign_legacy(
     instructions: Vec<Instruction>,

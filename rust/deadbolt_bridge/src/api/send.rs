@@ -84,6 +84,62 @@ pub fn sign_send_token(
     })
 }
 
+/// Build an unsigned SOL transfer transaction for simulation.
+///
+/// Uses the active wallet's public key as fee payer but does NOT sign.
+/// The returned base64 has zeroed signatures — suitable for simulateTransaction
+/// with sigVerify=false and replaceRecentBlockhash=true.
+pub fn build_unsigned_send_sol(to_address: String, lamports: u64) -> Result<String, String> {
+    let mgr = manager_pub().read().map_err(|e| e.to_string())?;
+    let signer = mgr.get_active_signer().map_err(|e| e.to_string())?;
+    let from = signer.public_key().clone();
+    let to = SolanaPublicKey::from_base58(&to_address).map_err(|e| e.to_string())?;
+
+    let params = SendSolParams {
+        from,
+        to,
+        lamports,
+        recent_blockhash: "11111111111111111111111111111111".to_string(), // placeholder — RPC replaces it
+        compute_unit_limit: None,
+        compute_unit_price: None,
+        jito_tip_lamports: None,
+    };
+
+    builder::build_unsigned_send_sol(&params).map_err(|e| e.to_string())
+}
+
+/// Build an unsigned SPL token transfer transaction for simulation.
+///
+/// Uses the active wallet's public key as fee payer but does NOT sign.
+/// The returned base64 has zeroed signatures — suitable for simulateTransaction
+/// with sigVerify=false and replaceRecentBlockhash=true.
+pub fn build_unsigned_send_token(
+    to_address: String,
+    mint_address: String,
+    amount: u64,
+    create_ata_if_needed: bool,
+) -> Result<String, String> {
+    let mgr = manager_pub().read().map_err(|e| e.to_string())?;
+    let signer = mgr.get_active_signer().map_err(|e| e.to_string())?;
+    let from = signer.public_key().clone();
+    let to = SolanaPublicKey::from_base58(&to_address).map_err(|e| e.to_string())?;
+    let mint = SolanaPublicKey::from_base58(&mint_address).map_err(|e| e.to_string())?;
+
+    let params = SendTokenParams {
+        from,
+        to,
+        mint,
+        amount,
+        recent_blockhash: "11111111111111111111111111111111".to_string(), // placeholder — RPC replaces it
+        create_ata_if_needed,
+        compute_unit_limit: None,
+        compute_unit_price: None,
+        jito_tip_lamports: None,
+    };
+
+    builder::build_unsigned_send_token(&params).map_err(|e| e.to_string())
+}
+
 // ─── Hardware wallet signing (ESP32) ───
 
 /// Connect to an ESP32 at the given port and return an Esp32Signer.
