@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 03-03-PLAN.md: Signing prompt bottom sheet, NavigationRail badge, Pending Requests queue, global auto-show"
-last_updated: "2026-03-18T07:07:18.893Z"
+stopped_at: "Completed 03-05-PLAN.md: sign_message bridge function and SignMessageIntent wiring"
+last_updated: "2026-03-18T14:21:16.534Z"
 last_activity: "2026-03-17 — Completed 02-04: Agent API Dashboard Screen with server toggle, key management, and curl test section"
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 13
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 14
   percent: 100
 ---
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | Phase 03-agent-signing-prompt P01 | 6 | 2 tasks | 5 files |
 | Phase 03-agent-signing-prompt P02 | 3 | 2 tasks | 4 files |
 | Phase 03-agent-signing-prompt P03 | 4 | 2 tasks | 3 files |
+| Phase 03-agent-signing-prompt P05 | 8 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 03-agent-signing-prompt]: Simulation deferred (SimulationPhase.idle) for SendSol/SendToken — buildUnsignedSendSol/buildUnsignedSendToken don't exist in FRB-generated send.dart; requires future Rust-side unsigned tx builder
 - [Phase 03-agent-signing-prompt]: Dynamic NavigationRailDestination list in build() for Badge widget — requires runtime pendingCount via ref.watch
 - [Phase 03-agent-signing-prompt]: showSigningPrompt() top-level helper pattern for consistent call site from AppShell auto-show and AgentApiScreen queue Review button
+- [Phase 03-agent-signing-prompt]: sign_message placed in sign.rs (not agent.rs) — FRB generates it into stable sign.dart; SignedTxDto reused with empty base64 for message signing
+- [Phase 03-agent-signing-prompt]: isSignMessage early-return in approve() skips sendTransaction and pollConfirmation — clean separation of message-signing vs transaction-submission paths
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:07:18.891Z
-Stopped at: Completed 03-03-PLAN.md: Signing prompt bottom sheet, NavigationRail badge, Pending Requests queue, global auto-show
+Last session: 2026-03-18T14:21:16.531Z
+Stopped at: Completed 03-05-PLAN.md: sign_message bridge function and SignMessageIntent wiring
 Resume file: None
