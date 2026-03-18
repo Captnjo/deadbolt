@@ -51,6 +51,7 @@ class SigningPromptSheet extends ConsumerStatefulWidget {
 class _SigningPromptSheetState extends ConsumerState<SigningPromptSheet> {
   late String _currentIntentId;
   Timer? _autoDismissTimer;
+  bool _popping = false;
 
   @override
   void initState() {
@@ -71,9 +72,19 @@ class _SigningPromptSheetState extends ConsumerState<SigningPromptSheet> {
   }
 
   Future<void> _reject() async {
+    // Capture next intent before removing current, to avoid double-pop race.
+    final next = ref.read(firstPendingIntentProvider);
+    final hasNext = next != null && next.id != _currentIntentId;
+
     await ref.read(intentProvider.notifier).reject(_currentIntentId);
     if (!mounted) return;
-    _advanceToNext();
+
+    if (hasNext) {
+      setState(() => _currentIntentId = next.id);
+    } else if (!_popping) {
+      _popping = true;
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _retry() async {
@@ -89,7 +100,8 @@ class _SigningPromptSheetState extends ConsumerState<SigningPromptSheet> {
     final next = ref.read(firstPendingIntentProvider);
     if (next != null && next.id != _currentIntentId) {
       setState(() => _currentIntentId = next.id);
-    } else {
+    } else if (!_popping) {
+      _popping = true;
       Navigator.of(context).pop();
     }
   }
@@ -107,7 +119,10 @@ class _SigningPromptSheetState extends ConsumerState<SigningPromptSheet> {
     // If the intent was removed (e.g. rejected and purged), close the sheet.
     if (intentOrNull == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).pop();
+        if (mounted && !_popping) {
+          _popping = true;
+          Navigator.of(context).pop();
+        }
       });
       return const SizedBox.shrink();
     }

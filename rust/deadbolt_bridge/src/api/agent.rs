@@ -5,14 +5,14 @@ use deadbolt_core::agent::intent::Intent;
 use deadbolt_core::models::config::GuardrailsConfig;
 use flutter_rust_bridge::frb;
 use rand::RngCore;
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 
 // --- Singletons ---
 
-static INTENT_RX: OnceLock<Mutex<Option<mpsc::UnboundedReceiver<Intent>>>> = OnceLock::new();
+static INTENT_TX: OnceLock<Mutex<Option<broadcast::Sender<Intent>>>> = OnceLock::new();
 
-fn intent_rx_store() -> &'static Mutex<Option<mpsc::UnboundedReceiver<Intent>>> {
-    INTENT_RX.get_or_init(|| Mutex::new(None))
+fn intent_tx_store() -> &'static Mutex<Option<broadcast::Sender<Intent>>> {
+    INTENT_TX.get_or_init(|| Mutex::new(None))
 }
 
 static AGENT_SERVER: OnceLock<Mutex<Option<AgentServer>>> = OnceLock::new();
@@ -82,10 +82,12 @@ pub async fn start_agent_server(port: u16) -> Result<AgentStatusEvent, String> {
     .await
     .map_err(|e| e.to_string())?;
 
-    // Store the intent receiver for stream_intents to claim
-    if let Ok(mut rx_guard) = intent_rx_store().lock() {
-        *rx_guard = Some(intent_rx);
+    // Store the broadcast sender so stream_intents can subscribe anytime
+    if let Ok(mut tx_guard) = intent_tx_store().lock() {
+        *tx_guard = Some(server.state().intent_sender.clone());
     }
+    // Drop the initial receiver — subscribers create their own
+    drop(intent_rx);
 
     // Re-acquire guard to store the server
     let mut guard = agent_server().lock().map_err(|e| e.to_string())?;
@@ -271,30 +273,19 @@ pub fn update_agent_wallet_data(
 /// NOTE: Full implementation requires FRB codegen to implement SseEncode for IntentEvent.
 /// The streaming loop body below is the intended implementation — enabled after codegen.
 pub async fn stream_intents(sink: crate::frb_generated::StreamSink<IntentEvent>) -> Result<(), String> {
-    // Validate server state is ready (fail-fast before entering loop)
-    {
-        let guard = intent_rx_store()
+    // Subscribe from the broadcast sender — works across hot restarts
+    let mut rx = {
+        let guard = intent_tx_store()
             .lock()
             .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
-        if guard.is_none() {
-            return Err("No intent receiver — start server first".to_string());
-        }
-    }
-    // Claim the receiver
-    let rx = {
-        let mut guard = intent_rx_store()
-            .lock()
-            .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
-        guard.take()
+        let tx = guard.as_ref().ok_or("No intent sender — start server first")?;
+        tx.subscribe()
     };
-    let mut rx = rx.ok_or_else(|| "No intent receiver — start server first".to_string())?;
 
-    // Drain intent channel and forward to Flutter sink.
-    // sink.add(event) requires SseEncode — provided by FRB codegen after `flutter_rust_bridge_codegen generate`.
     loop {
         match rx.recv().await {
-            Some(intent) => {
-                let _event = IntentEvent {
+            Ok(intent) => {
+                let event = IntentEvent {
                     id: intent.id.clone(),
                     intent_type_json: serde_json::to_string(&intent.intent_type)
                         .unwrap_or_default(),
@@ -305,11 +296,10 @@ pub async fn stream_intents(sink: crate::frb_generated::StreamSink<IntentEvent>)
                         intent.api_token.clone()
                     },
                 };
-                // TODO(codegen): sink.add(_event) — uncomment after FRB codegen runs
-                // if sink.add(_event).is_err() { break; }
-                let _ = &sink;
+                if sink.add(event).is_err() { break; }
             }
-            None => break,
+            Err(broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(broadcast::error::RecvError::Closed) => break,
         }
     }
     Ok(())

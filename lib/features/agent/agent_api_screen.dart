@@ -23,6 +23,20 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
   String _selectedEndpoint = '/health';
   int _selectedKeyIndex = 0;
 
+  // --- Auth cooldown (skip re-prompt within 60 seconds) ---
+  DateTime? _lastAuthTime;
+  static const _authCooldown = Duration(seconds: 60);
+
+  Future<bool> _requireAuth(BuildContext context) async {
+    if (_lastAuthTime != null &&
+        DateTime.now().difference(_lastAuthTime!) < _authCooldown) {
+      return true;
+    }
+    final authed = await showAuthChallengeDialog(context);
+    if (authed) _lastAuthTime = DateTime.now();
+    return authed;
+  }
+
   // --- Clipboard auto-clear (PLSH-02 — 30 seconds) ---
   Timer? _clipboardClearTimer;
 
@@ -61,7 +75,7 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
   // ---- Interaction Flows ----
 
   Future<void> _createKey(BuildContext context, WidgetRef ref) async {
-    final authed = await showAuthChallengeDialog(context);
+    final authed = await _requireAuth(context);
     if (!authed || !context.mounted) return;
 
     final keyNotifier = ref.read(agentKeyProvider.notifier);
@@ -139,7 +153,7 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Copy this key now. It will not be shown again.',
+                  'This is your full API key. Keep it secret.',
                   style: TextStyle(
                       fontSize: 14, color: BrandColors.textSecondary),
                 ),
@@ -171,7 +185,7 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
 
   Future<void> _revealKey(
       BuildContext context, WidgetRef ref, agent_bridge.ApiKeyEntry key) async {
-    final authed = await showAuthChallengeDialog(context);
+    final authed = await _requireAuth(context);
     if (!authed || !context.mounted) return;
 
     String? fullKey;
@@ -273,7 +287,7 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
     if (confirmed != true) return false;
     if (!context.mounted) return false;
 
-    final authed = await showAuthChallengeDialog(context);
+    final authed = await _requireAuth(context);
     if (!authed || !context.mounted) return false;
 
     try {
@@ -305,7 +319,7 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
       BuildContext context, List<agent_bridge.ApiKeyEntry> keys) async {
     if (keys.isEmpty) return;
 
-    final authed = await showAuthChallengeDialog(context);
+    final authed = await _requireAuth(context);
     if (!authed || !context.mounted) return;
 
     try {
@@ -603,21 +617,10 @@ class _AgentApiScreenState extends ConsumerState<AgentApiScreen> {
                 onPressed: () => _revealKey(context, ref, key),
               ),
             ),
-            Tooltip(
-              message: 'Copy to clipboard',
-              child: IconButton(
-                icon: const Icon(Icons.copy, size: 20),
-                onPressed: () => _copyMaskedKey(context, key),
-              ),
-            ),
           ],
         ),
       ),
     );
-  }
-
-  void _copyMaskedKey(BuildContext context, agent_bridge.ApiKeyEntry key) {
-    _copyToClipboard(key.tokenMasked, context);
   }
 
   Widget _buildQuickTest(

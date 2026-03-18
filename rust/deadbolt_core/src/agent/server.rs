@@ -10,7 +10,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use socket2::{Domain, Socket, Type};
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 
 use crate::models::config::GuardrailsConfig;
 use crate::models::DeadboltError;
@@ -60,7 +60,7 @@ pub struct AppState {
     pub guardrails: Mutex<GuardrailsEngine>,
     pub wallet_address: Mutex<Option<String>>,
     /// Channel to notify the Flutter UI of new intents.
-    pub intent_sender: mpsc::UnboundedSender<Intent>,
+    pub intent_sender: broadcast::Sender<Intent>,
     /// Cached wallet data snapshot for agent query endpoints.
     pub wallet_data: RwLock<WalletDataSnapshot>,
 }
@@ -78,8 +78,8 @@ impl AgentServer {
         api_tokens: Vec<String>,
         guardrails_config: GuardrailsConfig,
         wallet_address: Option<String>,
-    ) -> Result<(Self, mpsc::UnboundedReceiver<Intent>), DeadboltError> {
-        let (intent_tx, intent_rx) = mpsc::unbounded_channel();
+    ) -> Result<(Self, broadcast::Receiver<Intent>), DeadboltError> {
+        let (intent_tx, intent_rx) = broadcast::channel(64);
 
         let state = Arc::new(AppState {
             api_tokens: Mutex::new(api_tokens),
