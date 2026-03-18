@@ -51,20 +51,23 @@ pub struct IntentEvent {
 /// Start the agent server on port 9876. Async because server binding is async.
 /// Returns error if no tokens provided, port is busy, or server already running.
 pub async fn start_agent_server(port: u16) -> Result<AgentStatusEvent, String> {
-    let mut guard = agent_server().lock().map_err(|e| e.to_string())?;
-    if guard.is_some() {
-        return Ok(AgentStatusEvent {
-            status: "running".into(),
-            port: Some(port),
-            error: None,
-        });
+    // Check if already running (drop guard before any .await)
+    {
+        let guard = agent_server().lock().map_err(|e| e.to_string())?;
+        if guard.is_some() {
+            return Ok(AgentStatusEvent {
+                status: "running".into(),
+                port: Some(port),
+                error: None,
+            });
+        }
     }
 
-    // Load tokens from config
-    let mgr = super::wallet::manager_pub().read().map_err(|e| e.to_string())?;
-    let tokens = mgr.config().api_tokens.clone();
-    let wallet_address = mgr.config().active_wallet.clone();
-    drop(mgr);
+    // Load tokens from config (drop RwLockReadGuard before .await)
+    let (tokens, wallet_address) = {
+        let mgr = super::wallet::manager_pub().read().map_err(|e| e.to_string())?;
+        (mgr.config().api_tokens.clone(), mgr.config().active_wallet.clone())
+    };
 
     if tokens.is_empty() {
         return Err("Create at least one API key before starting the server.".into());
@@ -84,6 +87,8 @@ pub async fn start_agent_server(port: u16) -> Result<AgentStatusEvent, String> {
         *rx_guard = Some(intent_rx);
     }
 
+    // Re-acquire guard to store the server
+    let mut guard = agent_server().lock().map_err(|e| e.to_string())?;
     *guard = Some(server);
 
     Ok(AgentStatusEvent {

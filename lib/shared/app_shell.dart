@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import '../features/agent/signing_prompt_sheet.dart';
 import '../providers/agent_provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/intent.dart';
 import '../providers/intent_provider.dart';
 import '../providers/wallet_emoji_provider.dart';
 import '../providers/wallet_provider.dart';

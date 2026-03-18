@@ -7,7 +7,6 @@ import '../services/solana_rpc.dart';
 import '../src/rust/api/agent.dart' as agent_bridge;
 import '../src/rust/api/send.dart' as send_bridge;
 import 'network_provider.dart';
-import 'wallet_provider.dart';
 
 class IntentNotifier extends Notifier<List<PendingIntent>> {
   StreamSubscription<agent_bridge.IntentEvent>? _streamSub;
@@ -33,7 +32,7 @@ class IntentNotifier extends Notifier<List<PendingIntent>> {
           final intent = PendingIntent.fromEvent(
             event.id,
             event.intentTypeJson,
-            event.createdAt,
+            event.createdAt.toInt(),
             event.apiTokenPrefix,
           );
 
@@ -228,11 +227,8 @@ class IntentNotifier extends Notifier<List<PendingIntent>> {
         throw UnimplementedError('Swap signing requires Jupiter quote — implement in swap integration');
       } else if (type is SignMessageIntent) {
         // Sign raw message bytes with wallet's Ed25519 key
-        final sig = await agent_bridge.signMessage(
-          message: type.messageBytes,
-        );
-        // sign_message has no base64 tx — return the signature as both fields
-        return (base64: '', signature: sig);
+        // Requires sign_message bridge function — not yet implemented in Rust
+        throw UnimplementedError('Message signing requires sign_message bridge function — implement in future phase');
       } else {
         throw Exception('Unsupported intent type for signing');
       }
