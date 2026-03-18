@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `agent_server`, `intent_rx_store`, `mask_token`
+// These functions are ignored because they are not marked as `pub`: `agent_server`, `intent_tx_store`, `mask_token`
 
 /// Start the agent server on port 9876. Async because server binding is async.
 /// Returns error if no tokens provided, port is busy, or server already running.

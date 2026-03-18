@@ -54,6 +54,36 @@ Future<SignedTxDto> signSendToken({
   jitoTipLamports: jitoTipLamports,
 );
 
+/// Build an unsigned SOL transfer transaction for simulation.
+///
+/// Uses the active wallet's public key as fee payer but does NOT sign.
+/// The returned base64 has zeroed signatures — suitable for simulateTransaction
+/// with sigVerify=false and replaceRecentBlockhash=true.
+Future<String> buildUnsignedSendSol({
+  required String toAddress,
+  required BigInt lamports,
+}) => RustLib.instance.api.crateApiSendBuildUnsignedSendSol(
+  toAddress: toAddress,
+  lamports: lamports,
+);
+
+/// Build an unsigned SPL token transfer transaction for simulation.
+///
+/// Uses the active wallet's public key as fee payer but does NOT sign.
+/// The returned base64 has zeroed signatures — suitable for simulateTransaction
+/// with sigVerify=false and replaceRecentBlockhash=true.
+Future<String> buildUnsignedSendToken({
+  required String toAddress,
+  required String mintAddress,
+  required BigInt amount,
+  required bool createAtaIfNeeded,
+}) => RustLib.instance.api.crateApiSendBuildUnsignedSendToken(
+  toAddress: toAddress,
+  mintAddress: mintAddress,
+  amount: amount,
+  createAtaIfNeeded: createAtaIfNeeded,
+);
+
 /// Build and sign a SOL transfer via an ESP32 hardware wallet.
 ///
 /// Connects to the ESP32 at `port_path`, builds the transaction, then the

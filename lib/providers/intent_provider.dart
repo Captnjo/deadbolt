@@ -6,6 +6,7 @@ import '../models/intent.dart';
 import '../services/solana_rpc.dart';
 import '../src/rust/api/agent.dart' as agent_bridge;
 import '../src/rust/api/send.dart' as send_bridge;
+import '../src/rust/api/sign.dart' as sign_bridge;
 import 'network_provider.dart';
 
 class IntentNotifier extends Notifier<List<PendingIntent>> {
@@ -129,6 +130,21 @@ class IntentNotifier extends Notifier<List<PendingIntent>> {
       // 3. Build + sign transaction
       final signResult = await _signTransaction(intentId);
 
+      // For sign_message, there's no on-chain transaction — skip submission
+      final intent2 = state.firstWhere((i) => i.id == intentId);
+      if (intent2.isSignMessage) {
+        _updateIntent(intentId, (i) => i.copyWith(
+          lifecycle: IntentLifecycle.confirmed,
+          txSignature: signResult.signature,
+        ));
+        await agent_bridge.updateIntentStatus(
+          intentId: intentId,
+          status: 'confirmed',
+          signature: signResult.signature,
+        );
+        return;
+      }
+
       // 4. Submit
       _updateIntent(intentId, (i) => i.copyWith(lifecycle: IntentLifecycle.submitting));
       await agent_bridge.updateIntentStatus(intentId: intentId, status: 'submitted');
@@ -227,8 +243,9 @@ class IntentNotifier extends Notifier<List<PendingIntent>> {
         throw UnimplementedError('Swap signing requires Jupiter quote — implement in swap integration');
       } else if (type is SignMessageIntent) {
         // Sign raw message bytes with wallet's Ed25519 key
-        // Requires sign_message bridge function — not yet implemented in Rust
-        throw UnimplementedError('Message signing requires sign_message bridge function — implement in future phase');
+        // sign_message returns SignedTxDto with empty base64 and hex signature
+        final result = await sign_bridge.signMessage(messageHex: type.message);
+        return (base64: result.base64, signature: result.signature);
       } else {
         throw Exception('Unsupported intent type for signing');
       }

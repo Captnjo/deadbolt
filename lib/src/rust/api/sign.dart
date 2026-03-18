@@ -9,6 +9,15 @@ import 'types.dart';
 
 // These functions are ignored because they are not marked as `pub`: `sign_tx_with`
 
+/// Sign a raw message with the active wallet's Ed25519 key.
+///
+/// Takes a hex-encoded message (arbitrary bytes), signs it directly with the
+/// wallet's Ed25519 signing key, and returns the hex-encoded 64-byte signature.
+/// For message signing, `base64` in the returned DTO is empty — there is no
+/// on-chain transaction.
+Future<SignedTxDto> signMessage({required String messageHex}) =>
+    RustLib.instance.api.crateApiSignSignMessage(messageHex: messageHex);
+
 /// Sign a pre-built serialized transaction (base64-encoded).
 ///
 /// Takes an unsigned (or partially-signed) VersionedTransaction from an
