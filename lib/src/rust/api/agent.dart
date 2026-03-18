@@ -82,3 +82,10 @@ Future<void> updateIntentStatus({
   String? error,
 }) =>
     throw UnimplementedError('FRB codegen required');
+
+/// Sign a raw message with the active wallet's Ed25519 key.
+/// Returns the hex-encoded 64-byte signature.
+Future<String> signMessage({
+  required List<int> message,
+}) =>
+    throw UnimplementedError('FRB codegen required');
