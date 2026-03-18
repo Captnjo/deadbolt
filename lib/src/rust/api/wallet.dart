@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'types.dart';
 
 // These functions are ignored because they are not marked as `pub`: `manager`, `storage`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `manager_pub`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `manager_pub`, `storage_pub`
 
 /// Create a new wallet from a generated mnemonic.
 Future<CreateWalletResult> createWallet({
