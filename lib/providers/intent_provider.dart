@@ -110,10 +110,46 @@ class IntentNotifier extends Notifier<List<PendingIntent>> {
     // Skip simulation for sign_message (no transaction) and swap (requires quote)
     if (intent.isSignMessage || intent.type is SwapIntent) return;
 
-    // Simulation requires building an unsigned transaction, which is not yet
-    // supported via the FRB bridge (no buildUnsignedSendSol stub exists).
-    // Mark as idle — simulation will be enabled when unsigned tx builder is available.
-    _updateIntent(intentId, (i) => i.copyWith(simulationPhase: SimulationPhase.idle));
+    // Mark simulation as running
+    _updateIntent(intentId, (i) => i.copyWith(simulationPhase: SimulationPhase.running));
+
+    final net = ref.read(networkProvider);
+    final rpc = SolanaRpcClient(net.rpcUrl);
+    try {
+      // Build unsigned transaction for simulation
+      String unsignedBase64;
+      final type = intent.type;
+      if (type is SendSolIntent) {
+        unsignedBase64 = await send_bridge.buildUnsignedSendSol(
+          toAddress: type.to,
+          lamports: BigInt.from(type.lamports),
+        );
+      } else if (type is SendTokenIntent) {
+        unsignedBase64 = await send_bridge.buildUnsignedSendToken(
+          toAddress: type.to,
+          mintAddress: type.mint,
+          amount: BigInt.from(type.amount),
+          createAtaIfNeeded: true,
+        );
+      } else {
+        return; // Unsupported type for simulation
+      }
+
+      // Run simulation via RPC (sigVerify=false, replaceRecentBlockhash=true)
+      final result = await rpc.simulateTransaction(unsignedBase64);
+      _updateIntent(intentId, (i) => i.copyWith(
+        simulationPhase: result.success ? SimulationPhase.success : SimulationPhase.failed,
+        simulationError: result.success ? null : result.err?.toString(),
+        simulationUnitsConsumed: result.unitsConsumed,
+      ));
+    } catch (e) {
+      _updateIntent(intentId, (i) => i.copyWith(
+        simulationPhase: SimulationPhase.failed,
+        simulationError: e.toString(),
+      ));
+    } finally {
+      rpc.dispose();
+    }
   }
 
   // --- Approve ---
