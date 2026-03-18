@@ -25,6 +25,11 @@ import '../src/rust/api/auth.dart' as auth_bridge;
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Exposed for global bottom sheet display (e.g., signing prompt from any screen).
+final rootNavigatorKeyProvider = Provider<GlobalKey<NavigatorState>>((ref) {
+  return _rootNavigatorKey;
+});
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final needsOnboarding = ref.watch(needsOnboardingProvider);
   final authState = ref.watch(authProvider);
