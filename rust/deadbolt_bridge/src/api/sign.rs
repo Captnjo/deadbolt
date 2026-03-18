@@ -6,6 +6,24 @@ use deadbolt_core::solana::transaction::VersionedTransaction;
 use super::types::SignedTxDto;
 use super::wallet::manager_pub;
 
+/// Sign a raw message with the active wallet's Ed25519 key.
+///
+/// Takes a hex-encoded message (arbitrary bytes), signs it directly with the
+/// wallet's Ed25519 signing key, and returns the hex-encoded 64-byte signature.
+/// For message signing, `base64` in the returned DTO is empty — there is no
+/// on-chain transaction.
+pub fn sign_message(message_hex: String) -> Result<SignedTxDto, String> {
+    let message_bytes = hex::decode(&message_hex)
+        .map_err(|e| format!("Invalid hex: {e}"))?;
+    let mgr = manager_pub().read().map_err(|e| e.to_string())?;
+    let signer = mgr.get_active_signer().map_err(|e| e.to_string())?;
+    let sig_bytes = signer.sign(&message_bytes).map_err(|e| e.to_string())?;
+    Ok(SignedTxDto {
+        base64: String::new(),
+        signature: hex::encode(sig_bytes),
+    })
+}
+
 /// Sign a pre-built serialized transaction (base64-encoded).
 ///
 /// Takes an unsigned (or partially-signed) VersionedTransaction from an
