@@ -54,12 +54,12 @@ An AI agent can express intent and send transactions to Deadbolt for signing —
 - [ ] Quick test curl command generator in Agent API settings
 - [ ] Agent API sidebar entry (always visible, guides setup if not configured)
 - [ ] Server status indicator (running/stopped)
-- [ ] Guardrails engine: per-tx limits (SOL, USD), daily limits (count, USD), cooldowns
-- [ ] Guardrails: token whitelist and program whitelist
-- [ ] Guardrails apply to both agent and manual transactions
-- [ ] Guardrail bypass with app password (with timeout if user inactive)
-- [ ] Specific guardrail error messages to agent ("daily limit exceeded: $4,800/$5,000")
-- [ ] Guardrails settings UI (limits, whitelists via text field + searchable picker)
+- [x] Guardrails: token whitelist (v1 — program whitelist field exists, UI deferred to v2). Validated in Phase 4: Guardrails Engine
+- [x] Guardrails apply to both agent and manual transactions. Validated in Phase 4: Guardrails Engine
+- [x] Guardrail bypass with app password (one-shot, no timed window). Validated in Phase 4: Guardrails Engine
+- [x] Specific guardrail error messages to agent (HTTP 403 with violation detail). Validated in Phase 4: Guardrails Engine
+- [x] Guardrails settings UI (master toggle, token whitelist with Jupiter search + paste). Validated in Phase 4: Guardrails Engine
+- [ ] Guardrails engine: per-tx limits (SOL, USD), daily limits (count, USD), cooldowns (v2)
 - [ ] Import wallet from Solana CLI keypair file (64-byte JSON array)
 - [ ] Rename wallet
 - [ ] Vanity address generation (prefix grinding)
@@ -115,7 +115,7 @@ An AI agent can express intent and send transactions to Deadbolt for signing —
 | Flutter + Rust (not full Rust/Dioxus) | Flutter provides mature cross-platform UI; Rust handles all crypto securely | ✓ Good |
 | JSON serial protocol for ESP32 | Cleaner than text-based; already matches Rust bridge code | — Pending |
 | Single password for vault + app lock | Simpler UX, one password to remember, scrypt makes it strong | — Pending |
-| Guardrails on both agent and manual txs | Consistent safety; user can bypass with password | — Pending |
+| Guardrails on both agent and manual txs | Consistent safety; user can bypass with password | ✓ Phase 4 |
 | ESP32 firmware rewrite for BIP39 | Required for mnemonic backup; current firmware generates raw keypairs with no recovery | — Pending |
 | Dismissable overlay + queue for agent signing | Non-blocking when user is active; nothing lost when user is away | — Pending |
 
