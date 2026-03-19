@@ -88,7 +88,13 @@ Plans:
   3. User can bypass a guardrail block by entering the app password; the bypass window has a hard timeout
   4. Guardrail state (whitelists) survives app restart; previously configured limits are active on next launch without re-entry
   5. Guardrails apply equally to agent-initiated and manually sent transactions from the send screen
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Rust core: enabled field, swap output_mint fix, check_token_whitelist, FRB bridge module, fix server config
+- [ ] 04-02-PLAN.md — Flutter FRB stub, GuardrailsNotifier provider, GuardrailsSettingsSection with token whitelist UI
+- [ ] 04-03-PLAN.md — Send/swap enforcement: guardrail fields in state, provider checks, inline violation banners with bypass
+- [ ] 04-04-PLAN.md — End-to-end human verification of complete guardrails system
 
 ### Phase 5: ESP32 Firmware Rewrite
 **Goal**: The ESP32 firmware generates BIP39 mnemonics from verified entropy, stores seeds securely, and Flutter guides the user through backup
@@ -123,10 +129,10 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
 | 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
-| 4. Guardrails Engine | 0/TBD | Not started | - |
+| 4. Guardrails Engine | 0/4 | Planning complete | - |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
 | 6. Navigation, Settings, and Polish | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-18 after Phase 3 gap closure plans created*
+*Last updated: 2026-03-19 after Phase 4 plans created*
