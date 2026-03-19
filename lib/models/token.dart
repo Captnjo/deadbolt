@@ -35,12 +35,14 @@ class TokenDefinition {
   final String name;
   final String symbol;
   final int decimals;
+  final String? logoUri;
 
   const TokenDefinition({
     required this.mint,
     required this.name,
     required this.symbol,
     required this.decimals,
+    this.logoUri,
   });
 
   static const _solMint = 'So11111111111111111111111111111111111111112';
@@ -58,6 +60,7 @@ class TokenDefinition {
       name: json['name'] as String,
       symbol: json['symbol'] as String,
       decimals: json['decimals'] as int,
+      logoUri: json['logoUri'] as String?,
     );
   }
 }

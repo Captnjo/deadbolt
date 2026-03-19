@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/token.dart';
 import '../../providers/balance_provider.dart';
 import '../../providers/guardrails_provider.dart';
+import '../../providers/jupiter_token_list_provider.dart';
 import '../../src/rust/api/guardrails.dart' as guardrails_bridge;
 import '../../theme/brand_theme.dart';
 import '../lock/auth_challenge_dialog.dart';
@@ -133,26 +135,42 @@ class _GuardrailsSettingsSectionState
   }
 
   Widget _buildTokenRow(String mint) {
+    // Resolve token info from wallet balances, Jupiter list, or registry
     final portfolio = ref.watch(balanceProvider).valueOrNull;
-    final match = portfolio?.tokenBalances
+    final walletMatch = portfolio?.tokenBalances
         .where((tb) => tb.definition.mint == mint)
         .firstOrNull;
 
-    final symbol = match?.definition.symbol ?? 'Unknown';
+    TokenDefinition? def = walletMatch?.definition;
+    if (def == null) {
+      final jupiterTokens = ref.watch(jupiterTokenListProvider).valueOrNull;
+      def = jupiterTokens?.where((d) => d.mint == mint).firstOrNull;
+    }
+
+    final symbol = def?.symbol ?? 'Unknown';
+    final logoUri = def?.logoUri;
     final truncated = mint.length >= 8
         ? '${mint.substring(0, 4)}...${mint.substring(mint.length - 4)}'
         : mint;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        radius: 16,
-        backgroundColor: BrandColors.surface,
-        child: Text(
-          symbol.isNotEmpty ? symbol[0] : '?',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
+      leading: logoUri != null && logoUri.isNotEmpty
+          ? CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.card,
+              backgroundImage: NetworkImage(logoUri),
+              onBackgroundImageError: (e, s) {},
+              child: const SizedBox.shrink(),
+            )
+          : CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.surface,
+              child: Text(
+                symbol.isNotEmpty ? symbol[0] : '?',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
       title: Text(symbol, style: const TextStyle(fontSize: 14)),
       subtitle: Text(
         truncated,
@@ -184,9 +202,9 @@ class _GuardrailsSettingsSectionState
         builder: (_, scrollController) => _AddTokenSheetContent(
           scrollController: scrollController,
           existingMints: ref.read(guardrailsProvider).tokenWhitelist,
-          onAdd: (mint) {
-            ref.read(guardrailsProvider.notifier).addToken(mint);
+          onAddAll: (mints) {
             Navigator.pop(ctx);
+            ref.read(guardrailsProvider.notifier).addTokens(mints);
           },
         ),
       ),
@@ -194,16 +212,17 @@ class _GuardrailsSettingsSectionState
   }
 }
 
-/// Private bottom sheet content for adding a token to the whitelist.
+/// Private bottom sheet content for adding tokens to the whitelist.
+/// Shows wallet tokens + Jupiter verified tokens, with multi-select.
 class _AddTokenSheetContent extends ConsumerStatefulWidget {
   final ScrollController scrollController;
   final List<String> existingMints;
-  final void Function(String mint) onAdd;
+  final void Function(List<String> mints) onAddAll;
 
   const _AddTokenSheetContent({
     required this.scrollController,
     required this.existingMints,
-    required this.onAdd,
+    required this.onAddAll,
   });
 
   @override
@@ -214,6 +233,7 @@ class _AddTokenSheetContent extends ConsumerStatefulWidget {
 class _AddTokenSheetContentState
     extends ConsumerState<_AddTokenSheetContent> {
   final _mintController = TextEditingController();
+  final Set<String> _selected = {};
   String _searchQuery = '';
   String? _mintError;
 
@@ -225,103 +245,244 @@ class _AddTokenSheetContentState
 
   void _submitMint(String value) {
     final trimmed = value.trim();
-    if (trimmed.length != 44) {
+    if (trimmed.length < 32 || trimmed.length > 44) {
       setState(() =>
-          _mintError = 'Invalid mint address (must be 44 characters)');
+          _mintError = 'Invalid mint address');
       return;
     }
-    setState(() => _mintError = null);
-    widget.onAdd(trimmed);
+    if (widget.existingMints.contains(trimmed) ||
+        _selected.contains(trimmed)) {
+      setState(() => _mintError = 'Already added');
+      return;
+    }
+    setState(() {
+      _mintError = null;
+      _selected.add(trimmed);
+      _mintController.clear();
+    });
+  }
+
+  void _toggleToken(String mint) {
+    setState(() {
+      if (_selected.contains(mint)) {
+        _selected.remove(mint);
+      } else {
+        _selected.add(mint);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final portfolio = ref.watch(balanceProvider).valueOrNull;
-    final allTokens = portfolio?.tokenBalances ?? [];
+    final walletTokens = portfolio?.tokenBalances ?? [];
+    final jupiterAsync = ref.watch(jupiterTokenListProvider);
 
-    // Filter by search query, exclude already-whitelisted tokens
-    final filtered = allTokens.where((tb) {
-      if (widget.existingMints.contains(tb.definition.mint)) return false;
-      if (_searchQuery.isEmpty) return true;
+    // Build merged list: wallet tokens first, then Jupiter verified tokens
+    final walletDefs = walletTokens
+        .where((tb) => !widget.existingMints.contains(tb.definition.mint))
+        .map((tb) => tb.definition)
+        .toList();
+
+    final walletMints = walletDefs.map((d) => d.mint).toSet();
+
+    final jupiterDefs = jupiterAsync.valueOrNull
+            ?.where((d) =>
+                !widget.existingMints.contains(d.mint) &&
+                !walletMints.contains(d.mint))
+            .toList() ??
+        [];
+
+    // Apply search filter
+    List<TokenDefinition> filteredWallet;
+    List<TokenDefinition> filteredJupiter;
+    if (_searchQuery.isEmpty) {
+      filteredWallet = walletDefs;
+      // Don't dump all 1000+ Jupiter tokens — only show when searching
+      filteredJupiter = [];
+    } else {
       final q = _searchQuery.toLowerCase();
-      return tb.definition.symbol.toLowerCase().contains(q) ||
-          tb.definition.name.toLowerCase().contains(q);
-    }).toList();
+      bool matchesQuery(TokenDefinition d) =>
+          d.symbol.toLowerCase().contains(q) ||
+          d.name.toLowerCase().contains(q) ||
+          d.mint.toLowerCase().startsWith(q);
+      filteredWallet = walletDefs.where(matchesQuery).toList();
+      filteredJupiter = jupiterDefs.where(matchesQuery).take(50).toList();
+    }
 
-    return ListView(
-      controller: widget.scrollController,
-      padding: const EdgeInsets.all(16),
+    final hasResults = filteredWallet.isNotEmpty || filteredJupiter.isNotEmpty;
+
+    return Column(
       children: [
-        const Text(
-          'Add Token to Whitelist',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
+        Expanded(
+          child: ListView(
+            controller: widget.scrollController,
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text(
+                'Add Tokens to Whitelist',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
 
-        // Search field
-        TextField(
-          decoration: const InputDecoration(labelText: 'Search by name or symbol'),
-          onChanged: (v) => setState(() => _searchQuery = v),
-        ),
-        const SizedBox(height: 8),
+              // Search field
+              TextField(
+                decoration: InputDecoration(
+                  labelText: 'Search by name, symbol, or mint',
+                  suffixIcon: jupiterAsync.isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+              const SizedBox(height: 8),
 
-        // Held tokens list
-        if (filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'No tokens in your wallet yet',
-              style:
-                  TextStyle(fontSize: 13, color: BrandColors.textSecondary),
+              // Wallet tokens section
+              if (filteredWallet.isNotEmpty) ...[
+                const Text(
+                  'Your Wallet',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.textSecondary,
+                  ),
+                ),
+                for (final def in filteredWallet)
+                  _buildTokenCheckTile(def, inWallet: true),
+              ],
+
+              // Jupiter verified tokens section
+              if (filteredJupiter.isNotEmpty) ...[
+                if (filteredWallet.isNotEmpty) const Divider(),
+                const Text(
+                  'Jupiter Verified',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.textSecondary,
+                  ),
+                ),
+                for (final def in filteredJupiter)
+                  _buildTokenCheckTile(def, inWallet: false),
+              ],
+
+              if (!hasResults && _searchQuery.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'No tokens found',
+                    style: TextStyle(
+                        fontSize: 13, color: BrandColors.textSecondary),
+                  ),
+                ),
+
+              if (!hasResults && _searchQuery.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    jupiterAsync.isLoading
+                        ? 'Loading verified token list...'
+                        : 'Type to search verified tokens on Solana',
+                    style: const TextStyle(
+                        fontSize: 13, color: BrandColors.textSecondary),
+                  ),
+                ),
+
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Paste mint address field
+              TextField(
+                controller: _mintController,
+                decoration: InputDecoration(
+                  labelText: 'Or paste a mint address',
+                  errorText: _mintError,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add, size: 18),
+                    onPressed: () => _submitMint(_mintController.text),
+                  ),
+                ),
+                onSubmitted: _submitMint,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+
+        // Sticky bottom bar with Add button
+        if (_selected.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: BrandColors.surface,
+              border: Border(top: BorderSide(color: BrandColors.card)),
             ),
-          )
-        else
-          for (final tb in filtered)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                radius: 16,
-                backgroundColor: BrandColors.surface,
-                child: Text(
-                  tb.definition.symbol.isNotEmpty
-                      ? tb.definition.symbol[0]
-                      : '?',
-                  style: const TextStyle(fontSize: 12),
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => widget.onAddAll(_selected.toList()),
+                  child: Text('Add ${_selected.length} token${_selected.length == 1 ? '' : 's'}'),
                 ),
               ),
-              title: Text(tb.definition.symbol,
-                  style: const TextStyle(fontSize: 14)),
-              subtitle: Text(
-                tb.definition.mint.length >= 8
-                    ? '${tb.definition.mint.substring(0, 4)}...${tb.definition.mint.substring(tb.definition.mint.length - 4)}'
-                    : tb.definition.mint,
-                style: const TextStyle(
-                    fontSize: 13, color: BrandColors.textSecondary),
-              ),
-              onTap: () => widget.onAdd(tb.definition.mint),
             ),
-
-        const Divider(),
-        const SizedBox(height: 8),
-
-        // Paste mint address field
-        TextField(
-          controller: _mintController,
-          decoration: InputDecoration(
-            labelText: 'Or paste a mint address',
-            errorText: _mintError,
           ),
-          onSubmitted: _submitMint,
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => _submitMint(_mintController.text),
-            child: const Text('Add'),
-          ),
-        ),
       ],
+    );
+  }
+
+  Widget _buildTokenCheckTile(TokenDefinition def, {required bool inWallet}) {
+    final isChecked = _selected.contains(def.mint);
+    final truncated = def.mint.length >= 8
+        ? '${def.mint.substring(0, 4)}...${def.mint.substring(def.mint.length - 4)}'
+        : def.mint;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: _buildTokenAvatar(def),
+      title: Text(
+        def.symbol,
+        style: const TextStyle(fontSize: 14),
+      ),
+      subtitle: Text(
+        '${def.name}  $truncated',
+        style: const TextStyle(
+            fontSize: 12, color: BrandColors.textSecondary),
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Checkbox(
+        value: isChecked,
+        activeColor: BrandColors.primary,
+        onChanged: (_) => _toggleToken(def.mint),
+      ),
+      onTap: () => _toggleToken(def.mint),
+    );
+  }
+
+  Widget _buildTokenAvatar(TokenDefinition def) {
+    if (def.logoUri != null && def.logoUri!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundColor: BrandColors.card,
+        backgroundImage: NetworkImage(def.logoUri!),
+        onBackgroundImageError: (e, s) {},
+        child: const SizedBox.shrink(),
+      );
+    }
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: BrandColors.card,
+      child: Text(
+        def.symbol.isNotEmpty ? def.symbol[0] : '?',
+        style: const TextStyle(fontSize: 12),
+      ),
     );
   }
 }
