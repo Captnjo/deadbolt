@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-19T05:21:00Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-19T05:26:31.639Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -59,6 +59,7 @@ Plan: 2 of 4
 | Phase 03-agent-signing-prompt P05 | 8 | 2 tasks | 7 files |
 | Phase 03-agent-signing-prompt P06 | 4 | 2 tasks | 3 files |
 | Phase 04-guardrails-engine P01 | 15 | 2 tasks | 7 files |
+| Phase 04-guardrails-engine P02 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [04-01]: check_token_whitelist is separate from check() to avoid constructing fake Intent for manual txs
 - [04-01]: update_guardrails_config does a two-phase update: persist to disk then push to live server engine
 - [04-01]: agent_server() changed to pub(crate) -- accessible to sibling bridge modules, not exposed downstream
+- [Phase 04-02]: activeThumbColor replaces deprecated activeColor on Switch widget (Flutter 3.31+)
+- [Phase 04-02]: Token rows in guardrails whitelist use symbol initial in CircleAvatar — TokenDefinition has no logoUri field
 
 ### Pending Todos
 
@@ -124,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T05:21:00Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-guardrails-engine/04-02-PLAN.md
+Last session: 2026-03-19T05:26:31.636Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: None

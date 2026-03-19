@@ -40,11 +40,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **GRDL-01**: User can configure token whitelist (allow-list of token mints agents can interact with)
 - [x] **GRDL-02**: User can configure program whitelist (allow-list of programs agents can call)
-- [ ] **GRDL-03**: Whitelists configurable via text field (mint address) and searchable picker from held tokens
+- [x] **GRDL-03**: Whitelists configurable via text field (mint address) and searchable picker from held tokens
 - [x] **GRDL-04**: Guardrails apply to both agent-initiated and manual transactions
 - [x] **GRDL-05**: When guardrail blocks a transaction, agent receives specific error message
 - [ ] **GRDL-06**: User can bypass a guardrail block with app password (timed window)
-- [ ] **GRDL-07**: Guardrails settings UI accessible from settings screen
+- [x] **GRDL-07**: Guardrails settings UI accessible from settings screen
 
 ### Hardware Wallet
 
@@ -161,11 +161,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-15 | Phase 2 | Complete |
 | GRDL-01 | Phase 4 | Complete |
 | GRDL-02 | Phase 4 | Complete |
-| GRDL-03 | Phase 4 | Pending |
+| GRDL-03 | Phase 4 | Complete |
 | GRDL-04 | Phase 4 | Complete |
 | GRDL-05 | Phase 4 | Complete |
 | GRDL-06 | Phase 4 | Pending |
-| GRDL-07 | Phase 4 | Pending |
+| GRDL-07 | Phase 4 | Complete |
 | HWLT-01 | Phase 5 | Pending |
 | HWLT-02 | Phase 5 | Pending |
 | HWLT-03 | Phase 5 | Pending |
