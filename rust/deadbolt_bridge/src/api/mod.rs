@@ -1,5 +1,6 @@
 pub mod agent;
 pub mod auth;
+pub mod guardrails;
 pub mod hardware;
 pub mod init;
 pub mod send;

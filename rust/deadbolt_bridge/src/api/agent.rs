@@ -2,7 +2,6 @@ use std::sync::{Mutex, OnceLock};
 
 use deadbolt_core::agent::server::{AgentServer, WalletDataSnapshot, TokenSnapshot, HistoryEntry};
 use deadbolt_core::agent::intent::Intent;
-use deadbolt_core::models::config::GuardrailsConfig;
 use flutter_rust_bridge::frb;
 use rand::RngCore;
 use tokio::sync::broadcast;
@@ -17,7 +16,7 @@ fn intent_tx_store() -> &'static Mutex<Option<broadcast::Sender<Intent>>> {
 
 static AGENT_SERVER: OnceLock<Mutex<Option<AgentServer>>> = OnceLock::new();
 
-fn agent_server() -> &'static Mutex<Option<AgentServer>> {
+pub(crate) fn agent_server() -> &'static Mutex<Option<AgentServer>> {
     AGENT_SERVER.get_or_init(|| Mutex::new(None))
 }
 
@@ -64,9 +63,13 @@ pub async fn start_agent_server(port: u16) -> Result<AgentStatusEvent, String> {
     }
 
     // Load tokens from config (drop RwLockReadGuard before .await)
-    let (tokens, wallet_address) = {
+    let (tokens, wallet_address, guardrails_config) = {
         let mgr = super::wallet::manager_pub().read().map_err(|e| e.to_string())?;
-        (mgr.config().api_tokens.clone(), mgr.config().active_wallet.clone())
+        (
+            mgr.config().api_tokens.clone(),
+            mgr.config().active_wallet.clone(),
+            mgr.config().guardrails.clone(),
+        )
     };
 
     if tokens.is_empty() {
@@ -76,7 +79,7 @@ pub async fn start_agent_server(port: u16) -> Result<AgentStatusEvent, String> {
     let (server, intent_rx) = AgentServer::start(
         port,
         tokens,
-        GuardrailsConfig::default(),
+        guardrails_config,
         wallet_address,
     )
     .await
