@@ -78,8 +78,15 @@ class BalanceNotifier extends AsyncNotifier<PortfolioState> {
     for (final account in tokenAccounts) {
       if (account.uiAmount == null || account.uiAmount == 0) continue;
 
-      final def = TokenRegistry.instance.lookup(account.mint);
-      if (def == null) continue;
+      final def = TokenRegistry.instance.lookup(account.mint) ??
+          TokenDefinition(
+            mint: account.mint,
+            name: account.mint.length >= 8
+                ? '${account.mint.substring(0, 4)}...${account.mint.substring(account.mint.length - 4)}'
+                : account.mint,
+            symbol: 'Unknown',
+            decimals: account.decimals,
+          );
 
       double? price;
       if (network == SolanaNetwork.mainnet) {
