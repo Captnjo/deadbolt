@@ -17,7 +17,10 @@ class GuardrailsNotifier
   }
 
   Future<void> setEnabled(bool enabled) async {
-    final updated = state.copyWith(enabled: enabled);
+    final updated = guardrails_bridge.GuardrailsConfigDto(
+      enabled: enabled,
+      tokenWhitelist: state.tokenWhitelist,
+    );
     await guardrails_bridge.updateGuardrailsConfig(dto: updated);
     state = updated;
   }
@@ -25,14 +28,33 @@ class GuardrailsNotifier
   Future<void> addToken(String mint) async {
     if (state.tokenWhitelist.contains(mint)) return;
     final newList = [...state.tokenWhitelist, mint];
-    final updated = state.copyWith(tokenWhitelist: newList);
+    final updated = guardrails_bridge.GuardrailsConfigDto(
+      enabled: state.enabled,
+      tokenWhitelist: newList,
+    );
+    await guardrails_bridge.updateGuardrailsConfig(dto: updated);
+    state = updated;
+  }
+
+  Future<void> addTokens(List<String> mints) async {
+    final existing = state.tokenWhitelist.toSet();
+    final toAdd = mints.where((m) => !existing.contains(m)).toList();
+    if (toAdd.isEmpty) return;
+    final newList = [...state.tokenWhitelist, ...toAdd];
+    final updated = guardrails_bridge.GuardrailsConfigDto(
+      enabled: state.enabled,
+      tokenWhitelist: newList,
+    );
     await guardrails_bridge.updateGuardrailsConfig(dto: updated);
     state = updated;
   }
 
   Future<void> removeToken(String mint) async {
     final newList = state.tokenWhitelist.where((m) => m != mint).toList();
-    final updated = state.copyWith(tokenWhitelist: newList);
+    final updated = guardrails_bridge.GuardrailsConfigDto(
+      enabled: state.enabled,
+      tokenWhitelist: newList,
+    );
     await guardrails_bridge.updateGuardrailsConfig(dto: updated);
     state = updated;
   }

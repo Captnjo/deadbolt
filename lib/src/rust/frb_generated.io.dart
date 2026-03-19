@@ -5,6 +5,7 @@
 
 import 'api/agent.dart';
 import 'api/auth.dart';
+import 'api/guardrails.dart';
 import 'api/hardware.dart';
 import 'api/send.dart';
 import 'api/sign.dart';
@@ -48,6 +49,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_box_autoadd_f_64(dynamic raw);
 
   @protected
+  GuardrailsConfigDto dco_decode_box_autoadd_guardrails_config_dto(dynamic raw);
+
+  @protected
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
@@ -67,6 +71,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double dco_decode_f_64(dynamic raw);
+
+  @protected
+  GuardrailsConfigDto dco_decode_guardrails_config_dto(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -152,6 +159,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
+  GuardrailsConfigDto sse_decode_box_autoadd_guardrails_config_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
@@ -173,6 +185,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  GuardrailsConfigDto sse_decode_guardrails_config_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -272,6 +289,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_guardrails_config_dto(
+    GuardrailsConfigDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_i_64(
     PlatformInt64 self,
     SseSerializer serializer,
@@ -300,6 +323,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_guardrails_config_dto(
+    GuardrailsConfigDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
