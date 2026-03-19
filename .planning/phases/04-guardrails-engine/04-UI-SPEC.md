@@ -29,24 +29,29 @@ created: 2026-03-19
 
 ## Spacing Scale
 
-Declared values (multiples of 4):
+Declared values (multiples of 4) — for all new components authored in Phase 4:
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| xs | 4px | Icon-to-label gaps (e.g. `SizedBox(width: 8)` within Row) |
-| sm | 8px | Between related inline elements, stacked form fields |
-| md | 12px | Between card-internal items, between a banner and content above it |
-| lg | 16px | Card internal padding (`EdgeInsets.all(16)`), section item spacing |
+| xs | 4px | Icon-to-label gaps (e.g. `SizedBox(width: 4)` within Row) |
+| sm | 8px | Between related inline elements, stacked form fields, tighter gaps inside new components |
+| lg | 16px | Card internal padding (`EdgeInsets.all(16)`), section item spacing, gaps inside new components requiring comfortable padding |
 | xl | 24px | Between major review-step sections, section title to first item |
 | 2xl | 32px | Not actively used in existing screens — reserved |
 | 3xl | 48px | Not actively used in existing screens — reserved |
 
-Exceptions:
-- Button horizontal padding: 24px, vertical padding: 12px (per `elevatedButtonTheme` in `buildBrandTheme()`)
-- Section title to items gap: 12px (observed in `SecuritySettingsSection`)
-- Divider used as visual separator between settings sections (no numeric spacing token)
+New Phase 4 components must use only tokens from the table above (xs / sm / lg / xl). Use `sm` (8px) for tighter gaps and `lg` (16px) for card-internal padding.
 
-**Source:** Observed from `send_screen.dart` (lines 603–698), `security_settings_section.dart` (lines 44–110).
+### Codebase-inherited exceptions (not for new components)
+
+The following non-standard values are locked inside existing widgets and cannot be changed in this phase without touching unrelated code. Do not propagate them to any new component authored in Phase 4.
+
+| Value | Location | Why locked |
+|-------|----------|------------|
+| 12px (vertical button padding) | `elevatedButtonTheme` in `buildBrandTheme()` | Theme-level declaration; changing it affects all elevated buttons site-wide |
+| 12px (section title to items gap) | `SecuritySettingsSection` (lines 44–110) | Existing widget not modified in this phase; gap is part of its internal layout |
+
+**Source:** Observed from `send_screen.dart` (lines 603–698), `security_settings_section.dart` (lines 44–110), `brand_theme.dart` (`elevatedButtonTheme`).
 
 ---
 
@@ -56,12 +61,13 @@ Exceptions:
 |------|------|--------|-------------|-------|
 | Section heading | 14px | w700 | 1.2 | Settings section titles (e.g. "Security", "Guardrails") — `BrandColors.textSecondary` |
 | Body / list item | 14px | w400 | 1.5 | `ListTile` titles, form labels, banner messages, whitelist row text |
-| Screen heading | 20px | bold (w700) | 1.2 | Step titles (e.g. "Review Transaction") |
+| Screen heading | 20px | w700 | 1.2 | Step titles (e.g. "Review Transaction") |
 | Caption / meta | 13px | w400 | 1.5 | Simulation/guardrail banner body text, truncated mint addresses |
+| Sheet heading | 16px | w700 | 1.2 | Bottom sheet titles (e.g. "Add Token to Whitelist") |
 
-Only 3 distinct sizes used (13, 14, 20) and 2 weights (400, 700). This matches the existing codebase pattern exactly.
+4 distinct sizes used (13, 14, 16, 20) and 2 weights (400, 700). The 16px size is used exclusively for bottom sheet headings; do not introduce it for any other element in this phase.
 
-**Source:** `security_settings_section.dart` (14px w700 section title), `send_screen.dart` (20px bold for "Review Transaction", 13px for banner text, 14px for list items).
+**Source:** `security_settings_section.dart` (14px w700 section title), `send_screen.dart` (20px bold for "Review Transaction", 13px for banner text, 14px for list items). Sheet heading size confirmed from existing Add Token Bottom Sheet spec.
 
 ---
 
@@ -106,15 +112,17 @@ Structure:
 Divider()
 SizedBox(height: 16)
 Text("Guardrails", 14px w700, BrandColors.textSecondary)
-SizedBox(height: 12)
+SizedBox(height: 8)
 ListTile — "Guardrails" master toggle (Switch trailing widget)
   subtitle: "All guardrails disabled" in BrandColors.error when OFF
   onChanged: requires showAuthChallengeDialog() when toggling OFF
 [if enabled] ExpandableCard — "Token Whitelist"
   collapsed: "N tokens" count subtitle
   expanded: ListView of whitelisted token rows + "Add Token" button
-SizedBox(height: 12)
+SizedBox(height: 8)
 ```
+
+Note: The gap between section title and the first `ListTile` uses `sm` (8px), not the 12px value observed in `SecuritySettingsSection`. New components use the declared spacing tokens only.
 
 ### 2. Token Whitelist Row
 
@@ -122,7 +130,9 @@ Each row in the expanded whitelist:
 - Leading: `CircleAvatar` with network image (token icon) — fallback to first letter of symbol
 - Title: token symbol or "Unknown" (14px w400)
 - Subtitle: truncated mint address (first 4 + "..." + last 4 chars, 13px, `BrandColors.textSecondary`)
-- Trailing: `IconButton(icon: Icon(Icons.close, size: 18))` — removes token from whitelist
+- Trailing: `IconButton(icon: Icon(Icons.close, size: 18), tooltip: 'Remove token', onPressed: ...)` — removes token from whitelist
+
+**Accessibility:** The remove `IconButton` must include `tooltip: 'Remove token'` so that screen readers announce a meaningful action label. If a per-token label is preferable (e.g. "Remove BONK"), use `Semantics(label: 'Remove $symbol', child: IconButton(...))` instead.
 
 ### 3. Add Token Bottom Sheet
 
@@ -131,8 +141,8 @@ Triggered by "Add Token" button. `showModalBottomSheet` with `DraggableScrollabl
 Structure:
 ```
 Padding(16)
-Text("Add Token to Whitelist", 16px bold)
-SizedBox(height: 12)
+Text("Add Token to Whitelist", 16px w700)   ← Sheet heading token
+SizedBox(height: 8)
 TextField — search held tokens (label: "Search by name or symbol")
 [List of held tokens matching query — each row: icon + name + mint]
 Divider()
@@ -149,7 +159,7 @@ Inline widget in `_ReviewStep` (send) and swap review step. Appears below the si
 Structure:
 ```
 Container(
-  padding: EdgeInsets.all(12),
+  padding: EdgeInsets.all(16),        ← lg token
   decoration: BoxDecoration(
     color: BrandColors.error.withAlpha(20),
     borderRadius: BorderRadius.circular(8),
@@ -209,7 +219,7 @@ For "Token Whitelist" card in `GuardrailsSettingsSection`.
 |--------|----------|
 | Add token (held) | Tap row in search results → immediate add, row appears in whitelist, sheet dismisses |
 | Add token (paste) | Type/paste 44-char address → onSubmitted validation → add → sheet dismisses; invalid length shows inline error "Invalid mint address (must be 44 characters)" |
-| Remove token | Tap X → immediate removal from list; undo not offered |
+| Remove token | Tap X (`IconButton` with `tooltip: 'Remove token'`) → immediate removal from list; undo not offered |
 | Empty whitelist | "No restrictions — all SPL tokens allowed" caption under card header |
 
 ---
@@ -233,6 +243,7 @@ For "Token Whitelist" card in `GuardrailsSettingsSection`.
 | Empty state — whitelist sheet (no held tokens) | "No tokens in your wallet yet" |
 | Destructive: Remove token | No confirmation — immediate removal. (Removal is recoverable; user can re-add.) |
 | Destructive: Toggle guardrails OFF | Auth challenge dialog with existing "Confirm password" pattern — no custom copy needed |
+| Bottom sheet heading | "Add Token to Whitelist" |
 
 **Agent error messages** are not user-facing copy (HTTP 403 response body). They are defined by the Rust engine: `"Token not in whitelist: {mint}"`. No UI copy contract needed.
 
