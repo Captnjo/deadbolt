@@ -38,11 +38,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Guardrails
 
-- [ ] **GRDL-01**: User can configure token whitelist (allow-list of token mints agents can interact with)
-- [ ] **GRDL-02**: User can configure program whitelist (allow-list of programs agents can call)
+- [x] **GRDL-01**: User can configure token whitelist (allow-list of token mints agents can interact with)
+- [x] **GRDL-02**: User can configure program whitelist (allow-list of programs agents can call)
 - [ ] **GRDL-03**: Whitelists configurable via text field (mint address) and searchable picker from held tokens
-- [ ] **GRDL-04**: Guardrails apply to both agent-initiated and manual transactions
-- [ ] **GRDL-05**: When guardrail blocks a transaction, agent receives specific error message
+- [x] **GRDL-04**: Guardrails apply to both agent-initiated and manual transactions
+- [x] **GRDL-05**: When guardrail blocks a transaction, agent receives specific error message
 - [ ] **GRDL-06**: User can bypass a guardrail block with app password (timed window)
 - [ ] **GRDL-07**: Guardrails settings UI accessible from settings screen
 
@@ -60,7 +60,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **INFR-01**: ESP32 firmware supports BIP39 mnemonic generation and SLIP-0010 key derivation
 - [ ] **INFR-02**: ESP32 firmware uses verified entropy source (not silently weak esp_random)
 - [ ] **INFR-03**: ESP32 seed stored encrypted in NVS (not plaintext)
-- [ ] **INFR-04**: Guardrail state (whitelists) persisted to disk, survives app restart
+- [x] **INFR-04**: Guardrail state (whitelists) persisted to disk, survives app restart
 - [x] **INFR-05**: Axum server migrated to 0.8 route syntax
 - [x] **INFR-06**: Bearer token comparison uses constant-time equality (prevent timing attack)
 - [x] **INFR-07**: Zeroization audit: all key material on heap (Box/SecretVec), no stack copies
@@ -159,11 +159,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGNT-13 | Phase 2 | Complete |
 | AGNT-14 | Phase 2 | Complete |
 | AGNT-15 | Phase 2 | Complete |
-| GRDL-01 | Phase 4 | Pending |
-| GRDL-02 | Phase 4 | Pending |
+| GRDL-01 | Phase 4 | Complete |
+| GRDL-02 | Phase 4 | Complete |
 | GRDL-03 | Phase 4 | Pending |
-| GRDL-04 | Phase 4 | Pending |
-| GRDL-05 | Phase 4 | Pending |
+| GRDL-04 | Phase 4 | Complete |
+| GRDL-05 | Phase 4 | Complete |
 | GRDL-06 | Phase 4 | Pending |
 | GRDL-07 | Phase 4 | Pending |
 | HWLT-01 | Phase 5 | Pending |
@@ -175,7 +175,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-01 | Phase 5 | Pending |
 | INFR-02 | Phase 5 | Pending |
 | INFR-03 | Phase 5 | Pending |
-| INFR-04 | Phase 4 | Pending |
+| INFR-04 | Phase 4 | Complete |
 | INFR-05 | Phase 2 | Complete |
 | INFR-06 | Phase 1 | Complete |
 | INFR-07 | Phase 1 | Complete |

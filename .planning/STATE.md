@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-03-19T04:48:32.145Z"
-last_activity: "2026-03-17 — Completed 02-04: Agent API Dashboard Screen with server toggle, key management, and curl test section"
+status: unknown
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-19T05:21:00Z"
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 19
+  completed_plans: 16
 ---
 
 # Project State
@@ -21,20 +19,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** An AI agent can express intent and send transactions to Deadbolt for signing — through hardware wallet or hot wallet — with configurable guardrails the user controls.
-**Current focus:** Phase 2 — Agent API Bridge (complete)
+**Current focus:** Phase 04 — guardrails-engine
 
 ## Current Position
 
-Phase: 2 of 6 (Agent API Bridge — COMPLETE)
-Plan: 4 of 4 in current phase (02-04-PLAN.md COMPLETE)
-Status: Executing
-Last activity: 2026-03-17 — Completed 02-04: Agent API Dashboard Screen with server toggle, key management, and curl test section
-
-Progress: [██████████] 100%
+Phase: 04 (guardrails-engine) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 1
 - Average duration: 19 min
 - Total execution time: 0.32 hours
@@ -46,6 +41,7 @@ Progress: [██████████] 100%
 | 01-auth-system | 1 of 5 | 19 min | 19 min |
 
 **Recent Trend:**
+
 - Last 5 plans: 01-01 (19 min)
 - Trend: Baseline established
 
@@ -62,6 +58,7 @@ Progress: [██████████] 100%
 | Phase 03-agent-signing-prompt P03 | 4 | 2 tasks | 3 files |
 | Phase 03-agent-signing-prompt P05 | 8 | 2 tasks | 7 files |
 | Phase 03-agent-signing-prompt P06 | 4 | 2 tasks | 3 files |
+| Phase 04-guardrails-engine P01 | 15 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -107,6 +104,12 @@ Recent decisions affecting current work:
 - [Phase 03-agent-signing-prompt]: isSignMessage early-return in approve() skips sendTransaction and pollConfirmation — clean separation of message-signing vs transaction-submission paths
 - [Phase 03-agent-signing-prompt]: build_unsigned_legacy mirrors build_sign_legacy without tx.sign() — same instruction pipeline, zeroed signatures for simulateTransaction
 - [Phase 03-agent-signing-prompt]: Placeholder blockhash 11111111111111111111111111111111 in unsigned tx — RPC replaces via replaceRecentBlockhash=true so no fresh blockhash needed in Rust
+- [04-01]: Swap intents check output_mint (not input_mint) -- whitelist governs tokens you acquire
+- [04-01]: Agents CANNOT bypass guardrails -- check() has no bypass parameter, type system enforces this
+- [04-01]: GuardrailsConfig.enabled defaults to true via serde(default = 'default_true') for backward compat
+- [04-01]: check_token_whitelist is separate from check() to avoid constructing fake Intent for manual txs
+- [04-01]: update_guardrails_config does a two-phase update: persist to disk then push to live server engine
+- [04-01]: agent_server() changed to pub(crate) -- accessible to sibling bridge modules, not exposed downstream
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T04:48:32.143Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-guardrails-engine/04-UI-SPEC.md
+Last session: 2026-03-19T05:21:00Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-guardrails-engine/04-02-PLAN.md
