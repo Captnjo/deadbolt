@@ -10,6 +10,7 @@ import '../../providers/network_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../src/rust/api/wallet.dart' as bridge;
 import '../../theme/brand_theme.dart';
+import 'guardrails_settings_section.dart';
 import 'security_settings_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -119,6 +120,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
 
         const SecuritySettingsSection(),
+        const GuardrailsSettingsSection(),
 
         const SizedBox(height: 32),
         const Divider(),
