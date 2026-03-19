@@ -12,6 +12,29 @@ class HeliusDasService {
 
   void dispose() => _client.close();
 
+  /// Fetch a single asset by mint address. Works for fungible tokens and NFTs.
+  Future<Map<String, dynamic>?> getAsset(String mintAddress) async {
+    final uri = Uri.parse('https://mainnet.helius-rpc.com/?api-key=$apiKey');
+    final body = jsonEncode({
+      'jsonrpc': '2.0',
+      'id': 'deadbolt-asset',
+      'method': 'getAsset',
+      'params': {'id': mintAddress},
+    });
+
+    final response = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    if (response.statusCode != 200) return null;
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    if (json.containsKey('error')) return null;
+
+    return json['result'] as Map<String, dynamic>?;
+  }
+
   /// Fetch NFTs owned by an address using Helius DAS API.
   Future<List<NftAsset>> getAssetsByOwner(
     String ownerAddress, {

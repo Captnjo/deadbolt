@@ -5,6 +5,7 @@ import '../../models/token.dart';
 import '../../providers/balance_provider.dart';
 import '../../providers/guardrails_provider.dart';
 import '../../providers/jupiter_token_list_provider.dart';
+import '../../providers/token_metadata_provider.dart';
 import '../../src/rust/api/guardrails.dart' as guardrails_bridge;
 import '../../theme/brand_theme.dart';
 import '../lock/auth_challenge_dialog.dart';
@@ -135,19 +136,10 @@ class _GuardrailsSettingsSectionState
   }
 
   Widget _buildTokenRow(String mint) {
-    // Resolve token info from wallet balances, Jupiter list, or registry
-    final portfolio = ref.watch(balanceProvider).valueOrNull;
-    final walletMatch = portfolio?.tokenBalances
-        .where((tb) => tb.definition.mint == mint)
-        .firstOrNull;
+    final metaAsync = ref.watch(tokenMetadataProvider(mint));
+    final def = metaAsync.valueOrNull;
 
-    TokenDefinition? def = walletMatch?.definition;
-    if (def == null) {
-      final jupiterTokens = ref.watch(jupiterTokenListProvider).valueOrNull;
-      def = jupiterTokens?.where((d) => d.mint == mint).firstOrNull;
-    }
-
-    final symbol = def?.symbol ?? 'Unknown';
+    final symbol = def?.symbol ?? (metaAsync.isLoading ? '...' : 'Unknown');
     final logoUri = def?.logoUri;
     final truncated = mint.length >= 8
         ? '${mint.substring(0, 4)}...${mint.substring(mint.length - 4)}'
