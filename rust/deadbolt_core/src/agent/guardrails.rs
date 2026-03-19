@@ -36,9 +36,29 @@ impl GuardrailsEngine {
         self.config = config;
     }
 
+    /// Check a single token mint against the whitelist (for manual transactions via FRB bridge).
+    /// Returns Ok(()) if the mint passes, or an error with violation description.
+    /// Respects the master enabled toggle.
+    pub fn check_token_whitelist(&self, mint: &str) -> Result<(), DeadboltError> {
+        if !self.config.enabled {
+            return Ok(());
+        }
+        if !self.config.token_whitelist.is_empty()
+            && !self.config.token_whitelist.contains(&mint.to_string())
+        {
+            return Err(DeadboltError::GuardrailViolation(format!(
+                "Token not in whitelist: {mint}"
+            )));
+        }
+        Ok(())
+    }
+
     /// Check an intent against all guardrail rules.
     /// Returns Ok(()) if the intent passes, or an error describing which rule was violated.
     pub fn check(&self, intent: &Intent, usd_value: Option<f64>) -> Result<(), DeadboltError> {
+        if !self.config.enabled {
+            return Ok(());
+        }
         self.maybe_reset_daily_counters();
 
         // Per-transaction SOL limit
@@ -156,10 +176,11 @@ impl GuardrailsEngine {
 }
 
 /// Extract a token mint from an intent (if applicable).
+/// For Swap intents, returns the output_mint (what the agent is acquiring) — per locked decision.
 fn intent_mint(intent: &Intent) -> Option<String> {
     match &intent.intent_type {
         super::intent::IntentType::SendToken { mint, .. } => Some(mint.clone()),
-        super::intent::IntentType::Swap { input_mint, .. } => Some(input_mint.clone()),
+        super::intent::IntentType::Swap { output_mint, .. } => Some(output_mint.clone()),
         super::intent::IntentType::Stake { lst_mint, .. } => Some(lst_mint.clone()),
         super::intent::IntentType::SendSol { .. } => None,
         super::intent::IntentType::SignMessage { .. } => None,
@@ -315,6 +336,114 @@ mod tests {
         // SOL transfer — no mint, passes (whitelist only applies to tokens)
         let sol = sol_intent(100);
         assert!(engine.check(&sol, None).is_ok());
+    }
+
+    #[test]
+    fn test_enabled_toggle_skips_all_checks() {
+        let mut config = default_config();
+        config.enabled = false;
+        config.max_sol_per_tx = 0.001; // very low limit
+        config.token_whitelist = vec!["OnlyThisToken".to_string()];
+        let engine = GuardrailsEngine::new(config);
+
+        // Would normally fail sol limit
+        assert!(engine.check(&sol_intent(999_000_000_000), None).is_ok());
+        // Would normally fail whitelist
+        assert!(engine.check(&token_intent("SomeRandomMint", 100), None).is_ok());
+    }
+
+    #[test]
+    fn test_swap_output_mint_blocked() {
+        let mut config = default_config();
+        config.token_whitelist = vec![
+            "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_string(), // USDC
+        ];
+        let engine = GuardrailsEngine::new(config);
+
+        // Swap SOL -> BONK (output_mint not whitelisted) — should be blocked
+        let swap_intent = Intent::new(
+            IntentType::Swap {
+                input_mint: "So11111111111111111111111111111111111111112".to_string(),
+                output_mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263".to_string(), // BONK
+                amount: 1000,
+                slippage_bps: Some(50),
+            },
+            "db_test",
+        );
+        let result = engine.check(&swap_intent, None);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("not in whitelist"), "Error should mention whitelist: {err_msg}");
+
+        // Swap SOL -> USDC (output_mint IS whitelisted) — should pass
+        let usdc_swap = Intent::new(
+            IntentType::Swap {
+                input_mint: "So11111111111111111111111111111111111111112".to_string(),
+                output_mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_string(),
+                amount: 1000,
+                slippage_bps: Some(50),
+            },
+            "db_test",
+        );
+        assert!(engine.check(&usdc_swap, None).is_ok());
+    }
+
+    #[test]
+    fn test_check_token_whitelist_method() {
+        let mut config = default_config();
+        config.token_whitelist = vec![
+            "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_string(),
+        ];
+        let engine = GuardrailsEngine::new(config);
+
+        // Whitelisted mint passes
+        assert!(engine.check_token_whitelist("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v").is_ok());
+        // Unknown mint fails
+        assert!(engine.check_token_whitelist("RandomMint123").is_err());
+    }
+
+    #[test]
+    fn test_check_token_whitelist_empty_allows_all() {
+        let config = default_config(); // empty whitelist
+        let engine = GuardrailsEngine::new(config);
+        assert!(engine.check_token_whitelist("AnyMintAtAll").is_ok());
+    }
+
+    #[test]
+    fn test_check_token_whitelist_disabled_allows_all() {
+        let mut config = default_config();
+        config.enabled = false;
+        config.token_whitelist = vec!["OnlyThis".to_string()];
+        let engine = GuardrailsEngine::new(config);
+        assert!(engine.check_token_whitelist("NotInWhitelist").is_ok());
+    }
+
+    #[test]
+    fn test_agent_cannot_bypass_guardrails() {
+        // Agents have NO bypass mechanism -- GuardrailsEngine.check() has no bypass parameter.
+        // When a token is not whitelisted, check() always returns Err for agents.
+        // This test explicitly asserts the agent path has no bypass, per locked decision:
+        // "Agents CANNOT bypass guardrails."
+        let mut config = default_config();
+        config.token_whitelist = vec!["AllowedMint".to_string()];
+        let engine = GuardrailsEngine::new(config);
+
+        // Agent sends a blocked token -- no way to override
+        let blocked_intent = Intent::new(
+            IntentType::SendToken {
+                to: "SomeAddr".to_string(),
+                mint: "BlockedMint".to_string(),
+                amount: 100,
+            },
+            "agent_api_key",
+        );
+        let result = engine.check(&blocked_intent, None);
+        assert!(result.is_err(), "Agent must not bypass guardrails");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("not in whitelist"), "Error must be specific: {err_msg}");
+
+        // Verify: check() signature has no bypass flag -- it's (intent, usd_value) only.
+        // The Rust type system enforces this: there is no bypass parameter to pass.
     }
 
     #[test]

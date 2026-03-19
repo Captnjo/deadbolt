@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_approve_reject_intent() {
-        let (tx, _rx) = mpsc::unbounded_channel();
+        let (tx, _rx) = broadcast::channel(16);
         let state = Arc::new(AppState {
             api_tokens: Mutex::new(vec![]),
             intents: Mutex::new(HashMap::new()),

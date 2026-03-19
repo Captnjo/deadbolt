@@ -59,13 +59,13 @@ mod tests {
     use axum::Router;
     use std::collections::HashMap;
     use std::sync::Mutex;
-    use tokio::sync::mpsc;
+    use tokio::sync::broadcast;
     use tower::ServiceExt;
     use crate::models::config::GuardrailsConfig;
     use super::super::guardrails::GuardrailsEngine;
 
     fn make_app(tokens: Vec<String>) -> Router {
-        let (tx, _rx) = mpsc::unbounded_channel();
+        let (tx, _rx) = broadcast::channel(16);
         let state = Arc::new(AppState {
             api_tokens: Mutex::new(tokens),
             intents: Mutex::new(HashMap::new()),

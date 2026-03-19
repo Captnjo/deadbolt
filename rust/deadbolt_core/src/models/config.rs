@@ -49,10 +49,18 @@ fn default_network() -> String {
     "mainnet".to_string()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 /// Guardrails configuration for the agent API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GuardrailsConfig {
+    /// Whether guardrails are enabled (master toggle).
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
     /// Max SOL per transaction (0 = unlimited).
     #[serde(default)]
     pub max_sol_per_tx: f64,
@@ -85,6 +93,7 @@ pub struct GuardrailsConfig {
 impl Default for GuardrailsConfig {
     fn default() -> Self {
         Self {
+            enabled: true,
             max_sol_per_tx: 0.0,
             max_usd_per_tx: 0.0,
             max_daily_tx_count: 0,
@@ -327,5 +336,34 @@ mod tests {
             parsed.api_key_labels.get("db_test123").unwrap(),
             "Claude agent"
         );
+    }
+
+    #[test]
+    fn test_guardrails_enabled_default_true() {
+        let config = GuardrailsConfig::default();
+        assert!(config.enabled);
+    }
+
+    #[test]
+    fn test_guardrails_enabled_backwards_compat() {
+        // Old config JSON without "enabled" field should parse as enabled: true
+        let json = r#"{
+            "maxSolPerTx": 5.0,
+            "tokenWhitelist": ["USDC_MINT"]
+        }"#;
+        let config: GuardrailsConfig = serde_json::from_str(json).unwrap();
+        assert!(config.enabled, "Missing 'enabled' field must default to true");
+        assert_eq!(config.max_sol_per_tx, 5.0);
+        assert_eq!(config.token_whitelist, vec!["USDC_MINT"]);
+    }
+
+    #[test]
+    fn test_guardrails_enabled_roundtrip() {
+        let mut config = GuardrailsConfig::default();
+        config.enabled = false;
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("\"enabled\":false") || json.contains("\"enabled\": false"));
+        let parsed: GuardrailsConfig = serde_json::from_str(&json).unwrap();
+        assert!(!parsed.enabled);
     }
 }
