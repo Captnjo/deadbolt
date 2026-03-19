@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Auth System** - Wire vault unlock and app password gate into Flutter UI with idle auto-lock (completed 2026-03-16)
 - [x] **Phase 2: Agent API Bridge** - Expose the existing axum server to Flutter via FRB StreamSink and add key management UI (completed 2026-03-17)
 - [x] **Phase 3: Agent Signing Prompt** - Build the dismissable overlay, intent queue, simulation results, and full lifecycle tracking (completed 2026-03-18)
-- [ ] **Phase 4: Guardrails Engine** - Harden the existing Rust guardrails with atomic concurrency, persistence, and Flutter settings UI
+- [x] **Phase 4: Guardrails Engine** - Harden the existing Rust guardrails with atomic concurrency, persistence, and Flutter settings UI (completed 2026-03-19)
 - [ ] **Phase 5: ESP32 Firmware Rewrite** - Rewrite firmware for BIP39 mnemonic generation and secure NVS storage, with Flutter backup flow
 - [ ] **Phase 6: Navigation, Settings, and Polish** - Add sidebar entries, settings sections, wallet rename, and UX polish items
 
@@ -88,7 +88,7 @@ Plans:
   3. User can bypass a guardrail block by entering the app password; the bypass window has a hard timeout
   4. Guardrail state (whitelists) survives app restart; previously configured limits are active on next launch without re-entry
   5. Guardrails apply equally to agent-initiated and manually sent transactions from the send screen
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md — Rust core: enabled field, swap output_mint fix, check_token_whitelist, FRB bridge module, fix server config
@@ -129,7 +129,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | 1. Auth System | 5/5 | Complete   | 2026-03-16 |
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
 | 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
-| 4. Guardrails Engine | 3/4 | In Progress|  |
+| 4. Guardrails Engine | 4/4 | Complete   | 2026-03-19 |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
 | 6. Navigation, Settings, and Polish | 0/TBD | Not started | - |
 
