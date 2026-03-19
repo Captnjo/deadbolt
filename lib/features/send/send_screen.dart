@@ -14,6 +14,7 @@ import '../../providers/wallet_provider.dart';
 import '../../shared/formatters.dart';
 import '../../shared/validators.dart';
 import '../../theme/brand_theme.dart';
+import '../lock/auth_challenge_dialog.dart';
 
 class SendScreen extends ConsumerStatefulWidget {
   const SendScreen({super.key});
@@ -703,6 +704,49 @@ class _ReviewStep extends ConsumerWidget {
               ),
             ),
           ],
+          // Guardrail violation banner
+          if (sendState.guardrailViolation != null && !sendState.guardrailBypassed) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: BrandColors.error.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: BrandColors.error.withAlpha(60)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.shield_outlined, color: BrandColors.error, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          sendState.guardrailViolation!,
+                          style: const TextStyle(color: BrandColors.error, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(foregroundColor: BrandColors.warning),
+                      onPressed: () async {
+                        final ok = await showAuthChallengeDialog(context);
+                        if (ok) {
+                          ref.read(sendProvider.notifier).bypassGuardrails();
+                        }
+                      },
+                      child: const Text('Override with Password'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           // Action buttons
           Row(
@@ -722,7 +766,7 @@ class _ReviewStep extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: isProcessing
+                  onPressed: isProcessing || (sendState.guardrailViolation != null && !sendState.guardrailBypassed)
                       ? null
                       : () => ref.read(sendProvider.notifier).signAndSubmit(),
                   child: isProcessing && sendState.txStatus != TxStatus.simulating
