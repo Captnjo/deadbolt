@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-19T05:26:31.639Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-19T05:28:25.801Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -60,6 +60,7 @@ Plan: 2 of 4
 | Phase 03-agent-signing-prompt P06 | 4 | 2 tasks | 3 files |
 | Phase 04-guardrails-engine P01 | 15 | 2 tasks | 7 files |
 | Phase 04-guardrails-engine P02 | 2 | 2 tasks | 4 files |
+| Phase 04-guardrails-engine P03 | 3 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Recent decisions affecting current work:
 - [04-01]: agent_server() changed to pub(crate) -- accessible to sibling bridge modules, not exposed downstream
 - [Phase 04-02]: activeThumbColor replaces deprecated activeColor on Switch widget (Flutter 3.31+)
 - [Phase 04-02]: Token rows in guardrails whitelist use symbol initial in CircleAvatar — TokenDefinition has no logoUri field
+- [Phase 04-guardrails-engine]: SOL sends pass mint=null to checkManualTransaction -- SOL exempt from token whitelist by engine design
+- [Phase 04-guardrails-engine]: NFT send flow (NftNotifier) intentionally unmodified -- NFTs exempt from guardrails in v1 per locked decision
+- [Phase 04-guardrails-engine]: guardrailBypassed resets on SendState()/SwapState() construction -- one-shot bypass per transaction, not persistent
 
 ### Pending Todos
 
@@ -127,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T05:26:31.636Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-19T05:28:25.799Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
