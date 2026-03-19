@@ -32,6 +32,8 @@ class SendState {
   final bool simulationSuccess;
   final String? simulationError;
   final int? simulationUnitsConsumed;
+  final String? guardrailViolation;
+  final bool guardrailBypassed;
 
   const SendState({
     this.step = SendStep.recipient,
@@ -45,6 +47,8 @@ class SendState {
     this.simulationSuccess = false,
     this.simulationError,
     this.simulationUnitsConsumed,
+    this.guardrailViolation,
+    this.guardrailBypassed = false,
   });
 
   SendState copyWith({
@@ -59,6 +63,8 @@ class SendState {
     bool? simulationSuccess,
     String? simulationError,
     int? simulationUnitsConsumed,
+    String? guardrailViolation,
+    bool? guardrailBypassed,
   }) {
     return SendState(
       step: step ?? this.step,
@@ -73,6 +79,8 @@ class SendState {
       simulationError: simulationError ?? this.simulationError,
       simulationUnitsConsumed:
           simulationUnitsConsumed ?? this.simulationUnitsConsumed,
+      guardrailViolation: guardrailViolation ?? this.guardrailViolation,
+      guardrailBypassed: guardrailBypassed ?? this.guardrailBypassed,
     );
   }
 

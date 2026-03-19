@@ -83,6 +83,8 @@ class SwapState {
   final String? errorMessage;
   final bool simulationSuccess;
   final String? simulationError;
+  final String? guardrailViolation;
+  final bool guardrailBypassed;
 
   const SwapState({
     this.step = SwapStep.configure,
@@ -100,6 +102,8 @@ class SwapState {
     this.errorMessage,
     this.simulationSuccess = false,
     this.simulationError,
+    this.guardrailViolation,
+    this.guardrailBypassed = false,
   });
 
   SwapState copyWith({
@@ -118,6 +122,8 @@ class SwapState {
     String? errorMessage,
     bool? simulationSuccess,
     String? simulationError,
+    String? guardrailViolation,
+    bool? guardrailBypassed,
   }) {
     return SwapState(
       step: step ?? this.step,
@@ -135,6 +141,8 @@ class SwapState {
       errorMessage: errorMessage ?? this.errorMessage,
       simulationSuccess: simulationSuccess ?? this.simulationSuccess,
       simulationError: simulationError ?? this.simulationError,
+      guardrailViolation: guardrailViolation ?? this.guardrailViolation,
+      guardrailBypassed: guardrailBypassed ?? this.guardrailBypassed,
     );
   }
 

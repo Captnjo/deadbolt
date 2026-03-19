@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/send.dart';
 import '../services/solana_rpc.dart';
+import '../src/rust/api/guardrails.dart' as guardrails_bridge;
 import '../src/rust/api/hardware.dart' as hw_bridge;
 import '../src/rust/api/send.dart' as bridge;
 import '../src/rust/api/wallet.dart' as wallet_bridge;
@@ -67,6 +68,30 @@ class SendNotifier extends Notifier<SendState> {
     state = const SendState();
   }
 
+  /// Check the current send against guardrails. Called from UI before signAndSubmit.
+  void checkGuardrails() {
+    final asset = state.asset;
+    String? mint;
+    if (asset is SendToken) {
+      mint = asset.tokenBalance.definition.mint;
+    }
+    // SOL sends: mint is null, passes whitelist check (SOL exempt per decision)
+    // NFT sends use a completely separate flow (NftNotifier) and are NOT checked here
+    final violation = guardrails_bridge.checkManualTransaction(
+      mint: mint,
+      outputMint: null,
+    );
+    state = state.copyWith(
+      guardrailViolation: violation,
+      guardrailBypassed: false,
+    );
+  }
+
+  /// Mark current transaction as having guardrail bypass approved.
+  void bypassGuardrails() {
+    state = state.copyWith(guardrailBypassed: true, guardrailViolation: null);
+  }
+
   Future<void> simulate() async {
     state = state.copyWith(
       txStatus: TxStatus.simulating,
@@ -112,6 +137,25 @@ class SendNotifier extends Notifier<SendState> {
   }
 
   Future<void> signAndSubmit() async {
+    // Check guardrails before signing (skip if already bypassed)
+    if (!state.guardrailBypassed) {
+      final asset = state.asset;
+      String? mint;
+      if (asset is SendToken) {
+        mint = asset.tokenBalance.definition.mint;
+      }
+      // SOL sends: mint is null -> passes whitelist check
+      // NFT sends: completely separate flow (NftNotifier), never reaches here
+      final violation = guardrails_bridge.checkManualTransaction(
+        mint: mint,
+        outputMint: null,
+      );
+      if (violation != null) {
+        state = state.copyWith(guardrailViolation: violation);
+        return; // UI shows banner; user must bypass
+      }
+    }
+
     state = state.copyWith(
       txStatus: TxStatus.signing,
       errorMessage: null,

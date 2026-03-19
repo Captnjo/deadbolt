@@ -10,6 +10,7 @@ import '../models/token.dart';
 import '../services/dflow_service.dart';
 import '../services/jupiter_service.dart';
 import '../services/solana_rpc.dart';
+import '../src/rust/api/guardrails.dart' as guardrails_bridge;
 import '../src/rust/api/sign.dart' as sign_bridge;
 import '../src/rust/api/wallet.dart' as wallet_bridge;
 import '../src/rust/api/hardware.dart' as hw_bridge;
@@ -119,6 +120,25 @@ class SwapNotifier extends Notifier<SwapState> {
     state = SwapState(aggregator: apiKeys.defaultAggregator);
   }
 
+  /// Check the current swap against guardrails.
+  void checkGuardrails() {
+    final output = state.outputToken;
+    // Swap checks the OUTPUT token mint (what you're acquiring)
+    final violation = guardrails_bridge.checkManualTransaction(
+      mint: null,
+      outputMint: output?.definition.mint,
+    );
+    state = state.copyWith(
+      guardrailViolation: violation,
+      guardrailBypassed: false,
+    );
+  }
+
+  /// Mark current swap as having guardrail bypass approved.
+  void bypassGuardrails() {
+    state = state.copyWith(guardrailBypassed: true, guardrailViolation: null);
+  }
+
   void _debouncedQuote() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -218,6 +238,19 @@ class SwapNotifier extends Notifier<SwapState> {
   }
 
   Future<void> signAndSubmit() async {
+    // Check guardrails before signing (skip if already bypassed)
+    if (!state.guardrailBypassed) {
+      final output = state.outputToken;
+      final violation = guardrails_bridge.checkManualTransaction(
+        mint: null,
+        outputMint: output?.definition.mint,
+      );
+      if (violation != null) {
+        state = state.copyWith(guardrailViolation: violation);
+        return;
+      }
+    }
+
     state = state.copyWith(txStatus: TxStatus.signing, errorMessage: null);
 
     final rpc = _rpc;
