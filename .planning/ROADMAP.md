@@ -117,7 +117,12 @@ Plans:
   2. Settings screen has a security section (password, timeout) and an agent API section (server toggle, guardrails link)
   3. User can rename any wallet; the new name appears immediately in the wallet drawer and all screens
   4. Cmd+R refreshes the dashboard; copied sensitive values auto-clear from clipboard after 30 seconds with a toast; all list screens show a minimal empty state
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Hardware Wallet sidebar entry + Agent API settings section + Cmd+R shortcut
+- [ ] 06-02-PLAN.md — Wallet rename (Rust + bridge + Flutter) + clipboard auto-clear + empty states
+- [ ] 06-03-PLAN.md — Jito bundle submission wiring + end-to-end human verification
 
 ## Progress
 
@@ -131,8 +136,8 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
 | 4. Guardrails Engine | 4/4 | Complete    | 2026-03-19 |
 | 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
-| 6. Navigation, Settings, and Polish | 0/TBD | Not started | - |
+| 6. Navigation, Settings, and Polish | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-19 after Phase 4 plans created*
+*Last updated: 2026-03-20 after Phase 6 plans created*
