@@ -106,7 +106,14 @@ Plans:
   3. When an ESP32 reconnects, the app verifies the device's pubkey matches the registered wallet address and surfaces a warning if it does not match
   4. The ESP32 firmware uses a verified hardware entropy source; the firmware fails loudly at runtime if entropy quality cannot be confirmed
   5. The ESP32 seed is stored encrypted in NVS; a factory reset erases the entire NVS partition rather than soft-deleting the key entry
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Firmware: BIP39 wordlist + generation, SLIP-0010 derivation, AES-256 NVS encryption, entropy validation, new serial commands
+- [ ] 05-02-PLAN.md — Rust bridge: extend Response struct, add generate/reset/entropy/pubkey methods to Esp32Bridge and FRB hardware.rs
+- [ ] 05-03-PLAN.md — Flutter: hardware connection provider (5s polling), sidebar entry (3 states), /hardware route, disconnect snackbar
+- [ ] 05-04-PLAN.md — Flutter: device dashboard (4 sub-states), mnemonic display (screenshot prevention), verification quiz
+- [ ] 05-05-PLAN.md — End-to-end human verification of complete hardware wallet system
 
 ### Phase 6: Navigation, Settings, and Polish
 **Goal**: Sidebar navigation is complete, settings expose all new features, and UX polish items make the app feel finished
@@ -135,9 +142,9 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
 | 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
 | 4. Guardrails Engine | 4/4 | Complete    | 2026-03-19 |
-| 5. ESP32 Firmware Rewrite | 0/TBD | Not started | - |
+| 5. ESP32 Firmware Rewrite | 0/5 | Planned | - |
 | 6. Navigation, Settings, and Polish | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-03-16*
-*Last updated: 2026-03-20 after Phase 6 plans created*
+*Last updated: 2026-03-20 after Phase 5 plans created*
