@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-20T08:33:36.490Z"
+stopped_at: Completed 05-01-PLAN.md (BIP39 firmware rewrite)
+last_updated: "2026-03-20T08:45:05.031Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -63,6 +63,7 @@ Plan: 2 of 5
 | Phase 04-guardrails-engine P03 | 3 | 2 tasks | 6 files |
 | Phase 05-esp32-firmware-rewrite P02 | 2 | 2 tasks | 2 files |
 | Phase 05-esp32-firmware-rewrite P03 | 3 | 2 tasks | 6 files |
+| Phase 05-esp32-firmware-rewrite P01 | 14 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,10 @@ Recent decisions affecting current work:
 - [Phase 05-02]: wallet registration after generate stays in Flutter layer after mnemonic quiz — Rust returns words only, does not touch WalletManager
 - [Phase 05-esp32-firmware-rewrite]: hardware_stubs.dart pattern: separate hand-written stub file for pre-codegen bridge functions on auto-generated API files (hardware.dart is FRB-generated, must not be hand-edited)
 - [Phase 05-esp32-firmware-rewrite]: hardwareConnectionProvider replaces hwDetectedProvider in wallet_drawer.dart — StreamProvider with 4-state HwConnectionInfo replaces simple boolean provider, no parallel providers
+- [Phase 05-esp32-firmware-rewrite]: bip39_wordlist.h verified word-for-word against bip39-2.2.2 crate (english.rs); identical ordering ensures test vector produce same derivation as Rust
+- [Phase 05-esp32-firmware-rewrite]: generate sends status:generating before 5s BOOT wait so Rust bridge can extend read timeout (PBKDF2 takes 1-3s on ESP32-C3)
+- [Phase 05-esp32-firmware-rewrite]: setup() does NOT auto-generate on first boot; device starts with no key until generate command is explicitly sent
+- [Phase 05-esp32-firmware-rewrite]: loadKeypair migrates old plaintext privkey to enc_privkey on first boot, then removes plaintext entry
 
 ### Pending Todos
 
@@ -139,6 +144,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T08:33:36.487Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-03-20T08:45:05.029Z
+Stopped at: Completed 05-01-PLAN.md (BIP39 firmware rewrite)
 Resume file: None

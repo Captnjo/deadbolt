@@ -51,15 +51,15 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **HWLT-01**: Previously paired ESP32 silently auto-connects on app launch
 - [x] **HWLT-02**: UI updates connection status when ESP32 connects/disconnects
 - [x] **HWLT-03**: App verifies device pubkey matches registered wallet address on reconnect
-- [ ] **HWLT-04**: User can generate new keypair on ESP32 with BIP39 mnemonic backup
+- [x] **HWLT-04**: User can generate new keypair on ESP32 with BIP39 mnemonic backup
 - [ ] **HWLT-05**: Mnemonic displayed once during setup for user to write down
 - [x] **HWLT-06**: Hardware Wallet has its own sidebar entry (always visible, guides setup if not connected)
 
 ### Infrastructure Rebuilds
 
-- [ ] **INFR-01**: ESP32 firmware supports BIP39 mnemonic generation and SLIP-0010 key derivation
-- [ ] **INFR-02**: ESP32 firmware uses verified entropy source (not silently weak esp_random)
-- [ ] **INFR-03**: ESP32 seed stored encrypted in NVS (not plaintext)
+- [x] **INFR-01**: ESP32 firmware supports BIP39 mnemonic generation and SLIP-0010 key derivation
+- [x] **INFR-02**: ESP32 firmware uses verified entropy source (not silently weak esp_random)
+- [x] **INFR-03**: ESP32 seed stored encrypted in NVS (not plaintext)
 - [x] **INFR-04**: Guardrail state (whitelists) persisted to disk, survives app restart
 - [x] **INFR-05**: Axum server migrated to 0.8 route syntax
 - [x] **INFR-06**: Bearer token comparison uses constant-time equality (prevent timing attack)
@@ -169,12 +169,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HWLT-01 | Phase 5 | Complete |
 | HWLT-02 | Phase 5 | Complete |
 | HWLT-03 | Phase 5 | Complete |
-| HWLT-04 | Phase 5 | Pending |
+| HWLT-04 | Phase 5 | Complete |
 | HWLT-05 | Phase 5 | Pending |
 | HWLT-06 | Phase 5 | Complete |
-| INFR-01 | Phase 5 | Pending |
-| INFR-02 | Phase 5 | Pending |
-| INFR-03 | Phase 5 | Pending |
+| INFR-01 | Phase 5 | Complete |
+| INFR-02 | Phase 5 | Complete |
+| INFR-03 | Phase 5 | Complete |
 | INFR-04 | Phase 4 | Complete |
 | INFR-05 | Phase 2 | Complete |
 | INFR-06 | Phase 1 | Complete |
