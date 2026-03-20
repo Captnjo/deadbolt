@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-20T07:08:32.937Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-20T08:32:29.010Z"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 24
+  completed_plans: 20
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** An AI agent can express intent and send transactions to Deadbolt for signing — through hardware wallet or hot wallet — with configurable guardrails the user controls.
-**Current focus:** Phase 04 complete — guardrails-engine verified end-to-end
+**Current focus:** Phase 05 — esp32-firmware-rewrite
 
 ## Current Position
 
-Phase: 04 (guardrails-engine) — COMPLETE
-Plan: 4 of 4
+Phase: 05 (esp32-firmware-rewrite) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Plan: 4 of 4
 | Phase 04-guardrails-engine P01 | 15 | 2 tasks | 7 files |
 | Phase 04-guardrails-engine P02 | 2 | 2 tasks | 4 files |
 | Phase 04-guardrails-engine P03 | 3 | 2 tasks | 6 files |
+| Phase 05-esp32-firmware-rewrite P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase 04-guardrails-engine]: NFT send flow (NftNotifier) intentionally unmodified -- NFTs exempt from guardrails in v1 per locked decision
 - [Phase 04-guardrails-engine]: guardrailBypassed resets on SendState()/SwapState() construction -- one-shot bypass per transaction, not persistent
 - [Phase 04-guardrails-engine]: Swap enforcement test skipped on devnet (steps 33-36): no liquidity for custom tokens on Jupiter — enforcement code verified by code review, not a product defect
+- [Phase 05-02]: GENERATE_TIMEOUT (60s) reused for factory_reset — both require 5s BOOT hold plus device operation time
+- [Phase 05-02]: get_hardware_pubkey uses raw serial + serde_json::Value bypassing Esp32Bridge::connect() — lighter-weight for auto-connect pubkey mismatch detection (HWLT-03)
+- [Phase 05-02]: wallet registration after generate stays in Flutter layer after mnemonic quiz — Rust returns words only, does not touch WalletManager
 
 ### Pending Todos
 
@@ -132,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T07:08:32.930Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-esp32-firmware-rewrite/05-CONTEXT.md
+Last session: 2026-03-20T08:32:29.007Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: None
