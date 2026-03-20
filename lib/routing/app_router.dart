@@ -16,6 +16,8 @@ import '../features/nft/send_nft_screen.dart';
 import '../features/address_book/address_book_screen.dart';
 import '../features/agent/agent_api_screen.dart';
 import '../features/hardware/hardware_wallet_screen.dart';
+import '../features/hardware/mnemonic_display_screen.dart';
+import '../features/hardware/mnemonic_quiz_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
 import '../features/lock/lock_screen.dart';
@@ -130,6 +132,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: HardwareWalletScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'mnemonic',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) =>
+                    MnemonicDisplayScreen(words: state.extra as List<String>),
+              ),
+              GoRoute(
+                path: 'quiz',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) =>
+                    MnemonicQuizScreen(words: state.extra as List<String>),
+              ),
+            ],
           ),
           GoRoute(
             path: '/wallets',
