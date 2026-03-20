@@ -1,14 +1,33 @@
-// Unruggable ESP32 - Phase 3: Hardware Transaction Signer
+// Unruggable ESP32 - Phase 5: BIP39 Hardware Wallet
 // Board: ESP32-C3 SuperMini
-// Serial protocol for signing Solana transactions
+//
+// Serial protocol (JSON lines):
+//   Commands:  {"cmd":"ping"} | {"cmd":"pubkey"} | {"cmd":"generate"} |
+//              {"cmd":"sign","payload":"hex..."} | {"cmd":"reset"} |
+//              {"cmd":"entropy_check"}
+//   Responses: {"status":"ok|error|pending|signed|generating", ...}
+//
+// Key lifecycle:
+//   - generate command: validateEntropy -> generateMnemonic -> mnemonicToSeed ->
+//     slip10Derive -> Ed25519 pubkey -> encryptSeed -> NVS store
+//   - Boot: loadKeypair from encrypted NVS (migration path for old plaintext keys)
+//   - reset command: nvs_flash_erase + esp_restart (full partition wipe)
 
 #include <Preferences.h>
 #include <Ed25519.h>
 
+#include "bip39.h"
+#include "nvs_crypto.h"
+
+// NVS flash erase requires C linkage
+extern "C" {
+  #include "nvs_flash.h"
+}
+
 #define LED_PIN 8
 #define BOOT_BTN 9
-#define SIGN_TIMEOUT_MS 30000  // 30 seconds to confirm
-#define SERIAL_BUF_SIZE 4096   // max incoming message size
+#define SIGN_TIMEOUT_MS   30000  // 30 seconds to confirm signing
+#define SERIAL_BUF_SIZE   4096   // max incoming message size
 
 Preferences prefs;
 
@@ -22,7 +41,7 @@ bool hasKey = false;
 char serialBuf[SERIAL_BUF_SIZE];
 int serialBufIdx = 0;
 
-// Signing state
+// Signing state machine
 enum State { IDLE, AWAITING_CONFIRM };
 State state = IDLE;
 uint8_t pendingMessage[1232]; // max Solana tx message size
@@ -81,8 +100,9 @@ void hexEncode(const uint8_t *data, size_t len, char *out) {
   out[len * 2] = '\0';
 }
 
-// ---- LED ----
+// ---- LED helpers ----
 void ledSolid(bool on) { digitalWrite(LED_PIN, on ? LOW : HIGH); }
+
 void ledBlink(int times, int ms) {
   for (int i = 0; i < times; i++) {
     digitalWrite(LED_PIN, LOW); delay(ms);
@@ -90,41 +110,157 @@ void ledBlink(int times, int ms) {
   }
 }
 
-// ---- Key management ----
-void generateNewKeypair() {
-  for (int i = 0; i < 32; i += 4) {
-    uint32_t r = esp_random();
-    privateKey[i] = (r >> 0) & 0xFF;
-    privateKey[i + 1] = (r >> 8) & 0xFF;
-    privateKey[i + 2] = (r >> 16) & 0xFF;
-    privateKey[i + 3] = (r >> 24) & 0xFF;
+// LED patterns:
+// - Entropy failure:         10 rapid blinks at 50ms
+// - Generation in progress:  slow pulse 500ms on/off (in loop)
+// - Generation complete:     3 blinks at 200ms then solid on
+// - Factory reset pending:   very fast blink 30ms (in loop)
+// - Awaiting sign confirm:   slow pulse 300ms (existing)
+
+void ledEntropyError() {
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(LED_PIN, LOW); delay(50);
+    digitalWrite(LED_PIN, HIGH); delay(50);
   }
+}
+
+void ledGenerateComplete() {
+  ledBlink(3, 200);
+  ledSolid(true);
+}
+
+// ---- Key management ----
+
+// generateBip39Keypair()
+//   Full BIP39 keypair generation: entropy validate -> mnemonic -> seed ->
+//   SLIP-0010 derive -> Ed25519 pubkey -> AES-256-CBC encrypt -> NVS store.
+//
+//   Returns true on success, false on entropy failure or encryption error.
+//   On success, publicKey, privateKey, solanaAddress, and hasKey are updated.
+bool generateBip39Keypair(char words[BIP39_WORD_COUNT][BIP39_WORD_MAXLEN]) {
+  // Step 1: Validate entropy before generating keys
+  if (!validateEntropy()) {
+    ledEntropyError();
+    return false;
+  }
+
+  // Step 2: Generate 12-word BIP39 mnemonic
+  generateMnemonic(words);
+
+  // Step 3: Build mnemonic string (words joined by spaces)
+  char mnemonicStr[BIP39_WORD_COUNT * (BIP39_WORD_MAXLEN + 1) + 1];
+  mnemonicStr[0] = '\0';
+  for (int i = 0; i < BIP39_WORD_COUNT; i++) {
+    if (i > 0) strcat(mnemonicStr, " ");
+    strcat(mnemonicStr, words[i]);
+  }
+
+  // Step 4: PBKDF2-HMAC-SHA512 to get 64-byte BIP39 seed
+  uint8_t bip39Seed[64];
+  mnemonicToSeed(mnemonicStr, bip39Seed);
+
+  // Zeroize mnemonic string immediately after seed derivation
+  memset(mnemonicStr, 0, sizeof(mnemonicStr));
+
+  // Step 5: SLIP-0010 derivation -> 32-byte Ed25519 private key
+  slip10Derive(bip39Seed, privateKey);
+
+  // Zeroize BIP39 seed — private key is now in privateKey[32]
+  memset(bip39Seed, 0, sizeof(bip39Seed));
+
+  // Step 6: Derive Ed25519 public key from private key
   Ed25519::derivePublicKey(publicKey, privateKey);
+
+  // Step 7: Base58-encode public key to Solana address
   size_t addrLen;
   base58Encode(publicKey, 32, solanaAddress, &addrLen);
 
+  // Step 8: Encrypt private key for NVS storage
+  uint8_t encBuf[NVS_ENC_SIZE];
+  size_t encLen = 0;
+  if (!encryptSeed(privateKey, encBuf, &encLen)) {
+    sendError("encrypt_failed");
+    return false;
+  }
+
+  // Step 9: Store encrypted key and pubkey in NVS
   prefs.begin("unruggable", false);
-  prefs.putBytes("privkey", privateKey, 32);
+  prefs.putBytes("enc_privkey", encBuf, encLen);
   prefs.putBytes("pubkey", publicKey, 32);
   prefs.end();
+
+  // Zeroize encryption buffer
+  memset(encBuf, 0, sizeof(encBuf));
+
   hasKey = true;
+  return true;
 }
 
+// loadKeypair()
+//   Loads the keypair from NVS. Reads enc_privkey (AES-256-CBC encrypted).
+//   Migration path: if old plaintext "privkey" key exists, re-encrypts to
+//   "enc_privkey" and removes the old entry.
+//
+//   Returns true if a valid keypair was loaded.
 bool loadKeypair() {
-  prefs.begin("unruggable", true);
-  size_t privLen = prefs.getBytes("privkey", privateKey, 32);
-  size_t pubLen = prefs.getBytes("pubkey", publicKey, 32);
-  prefs.end();
-  if (privLen == 32 && pubLen == 32) {
-    size_t addrLen;
-    base58Encode(publicKey, 32, solanaAddress, &addrLen);
-    hasKey = true;
-    return true;
+  prefs.begin("unruggable", false); // read-write for potential migration
+
+  // Check for new encrypted format first
+  size_t encLen = prefs.getBytesLength("enc_privkey");
+  if (encLen == NVS_ENC_SIZE) {
+    uint8_t encBuf[NVS_ENC_SIZE];
+    prefs.getBytes("enc_privkey", encBuf, NVS_ENC_SIZE);
+
+    size_t pubLen = prefs.getBytes("pubkey", publicKey, 32);
+
+    if (pubLen == 32) {
+      bool ok = decryptSeed(encBuf, NVS_ENC_SIZE, privateKey);
+      memset(encBuf, 0, sizeof(encBuf));
+
+      if (ok) {
+        size_t addrLen;
+        base58Encode(publicKey, 32, solanaAddress, &addrLen);
+        hasKey = true;
+        prefs.end();
+        return true;
+      }
+    }
   }
+
+  // Migration path: old plaintext "privkey" exists (pre-BIP39 firmware)
+  size_t oldPrivLen = prefs.getBytesLength("privkey");
+  if (oldPrivLen == 32) {
+    uint8_t oldPrivkey[32];
+    prefs.getBytes("privkey", oldPrivkey, 32);
+    size_t pubLen = prefs.getBytes("pubkey", publicKey, 32);
+
+    if (pubLen == 32) {
+      // Re-encrypt the old plaintext key to new format
+      uint8_t encBuf[NVS_ENC_SIZE];
+      size_t encLen2 = 0;
+      if (encryptSeed(oldPrivkey, encBuf, &encLen2)) {
+        prefs.putBytes("enc_privkey", encBuf, encLen2);
+        prefs.remove("privkey"); // remove the old plaintext key
+        memset(encBuf, 0, sizeof(encBuf));
+      }
+
+      memcpy(privateKey, oldPrivkey, 32);
+      memset(oldPrivkey, 0, sizeof(oldPrivkey));
+
+      size_t addrLen;
+      base58Encode(publicKey, 32, solanaAddress, &addrLen);
+      hasKey = true;
+      prefs.end();
+      return true;
+    }
+    memset(oldPrivkey, 0, sizeof(oldPrivkey));
+  }
+
+  prefs.end();
   return false;
 }
 
-// ---- JSON response helpers (minimal, no library needed) ----
+// ---- JSON response helpers ----
 void sendResponse(const char *status, const char *key1, const char *val1,
                   const char *key2 = nullptr, const char *val2 = nullptr) {
   Serial.print("{\"status\":\"");
@@ -149,6 +285,7 @@ void sendError(const char *msg) {
 }
 
 // ---- Command handlers ----
+
 void handleGetPubkey() {
   if (!hasKey) { sendError("no_key"); return; }
   char hexPub[65];
@@ -166,33 +303,191 @@ void handleSign(const char *hexPayload, size_t hexLen) {
   state = AWAITING_CONFIRM;
   signRequestTime = millis();
 
-  // Notify host to wait
   Serial.print("{\"status\":\"pending\",\"msg\":\"Confirm on device\",\"bytes\":");
   Serial.print(pendingMessageLen);
   Serial.println("}");
 
-  // Visual: fast blink to alert user
   ledBlink(5, 80);
-  // LED stays on solid while waiting for button
   ledSolid(true);
 }
 
-void handleGenerate() {
-  generateNewKeypair();
+// handleGenerateBip39()
+//   Initiates BIP39 keypair generation with mandatory 5-second BOOT button hold.
+//   Returns 12 mnemonic words in the JSON response on success.
+void handleGenerateBip39() {
+  // Immediately notify host that we are waiting for physical confirmation
+  Serial.println("{\"status\":\"generating\",\"msg\":\"Hold BOOT button for 5 seconds to confirm\"}");
+
+  // Wait for BOOT button held for 5 seconds
+  // LED solid while waiting for button
+  ledSolid(true);
+
+  unsigned long btnDownTime = 0;
+  bool btnWasDown = false;
+  const unsigned long HOLD_REQUIRED = 5000;
+  const unsigned long WAIT_TIMEOUT  = 60000; // 60s to start holding
+  unsigned long waitStart = millis();
+
+  while (true) {
+    bool btnDown = (digitalRead(BOOT_BTN) == LOW);
+
+    if (btnDown && !btnWasDown) {
+      // Button just pressed — start timing
+      btnDownTime = millis();
+    }
+
+    if (btnDown) {
+      unsigned long heldFor = millis() - btnDownTime;
+      if (heldFor >= HOLD_REQUIRED) {
+        // Button held for 5 seconds — proceed with generation
+        break;
+      }
+    } else if (!btnDown && btnWasDown) {
+      // Button released before 5 seconds — cancelled
+      sendError("generation_cancelled");
+      ledSolid(false);
+      return;
+    }
+
+    // Timeout: user never started pressing
+    if (!btnDown && (millis() - waitStart > WAIT_TIMEOUT)) {
+      sendError("generation_cancelled");
+      ledSolid(false);
+      return;
+    }
+
+    btnWasDown = btnDown;
+
+    // Slow pulse LED while waiting for button
+    static unsigned long lastPulse = 0;
+    static bool pulseState = false;
+    if (millis() - lastPulse > 500) {
+      lastPulse = millis();
+      pulseState = !pulseState;
+      ledSolid(pulseState);
+    }
+
+    delay(10);
+  }
+
+  // Generation begins — LED fast pulse indicates work in progress
+  ledSolid(false);
+
+  char words[BIP39_WORD_COUNT][BIP39_WORD_MAXLEN];
+  memset(words, 0, sizeof(words));
+
+  if (!generateBip39Keypair(words)) {
+    // generateBip39Keypair already sent an error or lit the entropy-error LED
+    sendError("entropy_check_failed");
+    memset(words, 0, sizeof(words));
+    ledSolid(true);
+    return;
+  }
+
+  // Build hex-encoded pubkey
   char hexPub[65];
   hexEncode(publicKey, 32, hexPub);
-  sendResponse("ok", "pubkey", hexPub, "address", solanaAddress);
+
+  // Send JSON response with words array
+  // Built manually to avoid JSON library dependency
+  Serial.print("{\"status\":\"ok\",\"words\":[");
+  for (int i = 0; i < BIP39_WORD_COUNT; i++) {
+    Serial.print("\"");
+    Serial.print(words[i]);
+    Serial.print("\"");
+    if (i < BIP39_WORD_COUNT - 1) Serial.print(",");
+  }
+  Serial.print("],\"pubkey\":\"");
+  Serial.print(hexPub);
+  Serial.print("\",\"address\":\"");
+  Serial.print(solanaAddress);
+  Serial.println("\"}");
+
+  // Zeroize the words from the stack immediately after sending
+  memset(words, 0, sizeof(words));
+
+  ledGenerateComplete();
+}
+
+// handleFactoryReset()
+//   Erases the entire NVS partition after 5-second BOOT button hold.
+//   Device reboots after successful erase.
+void handleFactoryReset() {
+  Serial.println("{\"status\":\"pending\",\"msg\":\"Hold BOOT for 5 seconds to confirm reset\"}");
+
+  ledSolid(true);
+
+  unsigned long btnDownTime = 0;
+  bool btnWasDown = false;
+  const unsigned long HOLD_REQUIRED = 5000;
+  const unsigned long WAIT_TIMEOUT  = 60000;
+  unsigned long waitStart = millis();
+
+  while (true) {
+    bool btnDown = (digitalRead(BOOT_BTN) == LOW);
+
+    if (btnDown && !btnWasDown) {
+      btnDownTime = millis();
+    }
+
+    if (btnDown) {
+      unsigned long heldFor = millis() - btnDownTime;
+      if (heldFor >= HOLD_REQUIRED) {
+        break;
+      }
+    } else if (!btnDown && btnWasDown) {
+      sendError("reset_cancelled");
+      ledSolid(false);
+      return;
+    }
+
+    if (!btnDown && (millis() - waitStart > WAIT_TIMEOUT)) {
+      sendError("reset_cancelled");
+      ledSolid(false);
+      return;
+    }
+
+    btnWasDown = btnDown;
+
+    // Very fast blink while awaiting reset confirmation
+    static unsigned long lastBlink = 0;
+    static bool blinkState = false;
+    if (millis() - lastBlink > 30) {
+      lastBlink = millis();
+      blinkState = !blinkState;
+      ledSolid(blinkState);
+    }
+
+    delay(5);
+  }
+
+  // Close any open Preferences handle before erasing
+  prefs.end();
+
+  // Erase the entire NVS partition — full partition-level wipe,
+  // not a soft-delete. This is the correct factory reset approach.
+  // (See RESEARCH.md Pitfall 5 for nvs_flash_erase() vs prefs.remove() distinction)
+  nvs_flash_deinit();
+  nvs_flash_erase();
+
+  Serial.println("{\"status\":\"ok\",\"msg\":\"factory_reset_complete\"}");
+  delay(100); // brief delay to flush serial before reboot
+
+  esp_restart();
+}
+
+// handleEntropyCheck()
+//   Runs the chi-squared entropy validation test and returns result.
+void handleEntropyCheck() {
+  if (validateEntropy()) {
+    sendResponse("ok", "msg", "entropy_valid");
+  } else {
+    sendError("entropy_check_failed");
+  }
 }
 
 // ---- Parse incoming serial command ----
-// Protocol (JSON lines):
-//   {"cmd":"pubkey"}
-//   {"cmd":"sign","payload":"<hex-encoded message bytes>"}
-//   {"cmd":"generate"}
-//   {"cmd":"ping"}
-
 void parseCommand(const char *line) {
-  // Find cmd value
   const char *cmdStart = strstr(line, "\"cmd\"");
   if (!cmdStart) { sendError("no_cmd"); return; }
 
@@ -203,19 +498,24 @@ void parseCommand(const char *line) {
     handleGetPubkey();
   }
   else if (strstr(cmdStart, "\"generate\"")) {
-    handleGenerate();
+    handleGenerateBip39();
   }
   else if (strstr(cmdStart, "\"sign\"")) {
-    // Extract payload hex string
     const char *payloadKey = strstr(line, "\"payload\"");
     if (!payloadKey) { sendError("no_payload"); return; }
     const char *valStart = strchr(payloadKey + 9, '"');
     if (!valStart) { sendError("bad_format"); return; }
-    valStart++; // skip opening quote
+    valStart++;
     const char *valEnd = strchr(valStart, '"');
     if (!valEnd) { sendError("bad_format"); return; }
     size_t hexLen = valEnd - valStart;
     handleSign(valStart, hexLen);
+  }
+  else if (strstr(cmdStart, "\"reset\"")) {
+    handleFactoryReset();
+  }
+  else if (strstr(cmdStart, "\"entropy_check\"")) {
+    handleEntropyCheck();
   }
   else {
     sendError("unknown_cmd");
@@ -241,7 +541,6 @@ void performSign() {
   state = IDLE;
   pendingMessageLen = 0;
 
-  // Confirm blink
   ledBlink(2, 150);
   ledSolid(true);
 }
@@ -263,17 +562,24 @@ void setup() {
   pinMode(BOOT_BTN, INPUT_PULLUP);
   ledSolid(false);
 
+  // Load keypair from encrypted NVS (with migration path for old plaintext keys).
+  // Device starts without a key if NVS is empty — key generation is command-driven.
   if (!loadKeypair()) {
-    generateNewKeypair();
+    hasKey = false;
   }
 
-  // Boot message (human-readable, not JSON — host ignores lines not starting with '{')
-  Serial.println("# UNRUGGABLE ESP32 v0.3 - Hardware Signer");
-  Serial.print("# Address: ");
-  Serial.println(solanaAddress);
+  // Boot banner (human-readable; host ignores lines not starting with '{')
+  Serial.println("# UNRUGGABLE ESP32 v1.0 - BIP39 Hardware Signer");
+  if (hasKey) {
+    Serial.print("# Address: ");
+    Serial.println(solanaAddress);
+  } else {
+    Serial.println("# No keypair loaded. Send generate command.");
+  }
   Serial.println("# Ready for commands. Protocol: JSON lines.");
+  Serial.println("# Commands: ping, pubkey, generate, sign, reset, entropy_check");
 
-  ledSolid(true);
+  ledSolid(hasKey);
 }
 
 // ---- Main loop ----
@@ -286,7 +592,6 @@ void loop() {
     if (c == '\n' || c == '\r') {
       if (serialBufIdx > 0) {
         serialBuf[serialBufIdx] = '\0';
-        // Only parse lines starting with '{'
         if (serialBuf[0] == '{') {
           parseCommand(serialBuf);
         }
@@ -309,24 +614,13 @@ void loop() {
     if (millis() - signRequestTime > SIGN_TIMEOUT_MS) {
       rejectSign();
     }
-    // Blink while waiting (slow pulse)
+    // Slow pulse while waiting for confirmation
     static unsigned long lastPulse = 0;
     if (millis() - lastPulse > 300) {
       lastPulse = millis();
       static bool pulseState = false;
       pulseState = !pulseState;
       ledSolid(pulseState);
-    }
-  }
-
-  // ---- Idle: hold boot 3s to regenerate key ----
-  static unsigned long btnDownTime = 0;
-  static bool btnHeld = false;
-  if (state == IDLE) {
-    if (btnPressed && !lastBtn) { btnDownTime = millis(); btnHeld = false; }
-    if (btnPressed && !btnHeld && (millis() - btnDownTime > 3000)) {
-      btnHeld = true;
-      handleGenerate();
     }
   }
 
