@@ -43,10 +43,15 @@ Declared values (multiples of 4). Source: observed across existing screens (`con
 | 2xl | 48px | Major section breaks (loading states, USB icon empty states) |
 | 3xl | 64px | Page-level spacing (not currently used; reserved) |
 
-Exceptions:
-- Wallet drawer tile: `padding: symmetric(horizontal: 20, vertical: 10)` — uses 20px horizontal for visual distinction of drawer context
-- MnemonicGrid word cells: `padding: symmetric(horizontal: 8, vertical: 6)` — 6px vertical is intentional compact fit for word chips
-- `SizedBox(height: 6)` used in wallet drawer between sub-rows — acceptable as visual micro-gap, not layout spacing
+**Locked legacy exceptions** (pre-existing codebase values — do not change without a dedicated refactor task):
+
+| Location | Value | Source file | Notes |
+|----------|-------|-------------|-------|
+| Wallet drawer tile padding | `symmetric(horizontal: 20, vertical: 10)` | `lib/shared/widgets/wallet_drawer.dart:128` | 20px horizontal and 10px vertical are non-multiples-of-4; inherited from existing drawer implementation |
+| MnemonicGrid word cell padding | `symmetric(horizontal: 8, vertical: 6)` | `lib/shared/widgets/mnemonic_grid.dart:29` | 6px vertical is a non-multiple-of-4; intentional compact fit for word chips, do not alter |
+| Wallet drawer sub-row gap | `SizedBox(height: 6)` | `lib/features/dashboard/dashboard_screen.dart:347` | 6px micro-gap is a non-multiple-of-4; existing visual rhythm in drawer, do not alter |
+
+New code introduced in Phase 5 must use only multiples of 4. The legacy exceptions above apply exclusively to their named locations.
 
 ---
 
@@ -59,7 +64,9 @@ Source: `brand_theme.dart` TextTheme + observed sizes across existing screens.
 | Body | 14px | 400 (normal) | 1.5 |
 | Label | 12px | 400 (normal) | 1.4 |
 | Heading | 24px | 700 (bold) | 1.2 |
-| Subheading | 16px | 600 (w600) | 1.3 |
+| Subheading | 16px | 700 (bold) | 1.3 |
+
+Two weights only: 400 (normal) and 700 (bold). Subheading is distinguished from body by size (16px vs 14px), not by a separate weight. Do not introduce w600 or any third weight in Phase 5 code.
 
 **Monospace exception:** All pubkey/address strings and mnemonic words use `fontFamily: 'monospace'` at 12–13px weight 400. Apply consistently on:
 - Pubkey display in device dashboard
@@ -120,8 +127,8 @@ Phase 5 introduces three new Flutter screens and modifies one existing widget. A
 **Sub-states:**
 - **Not paired:** Setup guide flow — vertically stacked steps card, "Connect Device" ElevatedButton at bottom
 - **Paired + disconnected:** Device info card (name, truncated pubkey in monospace, status "Disconnected" in `BrandColors.textSecondary`), "Reconnect" OutlinedButton, "Factory Reset" destructive OutlinedButton with `BrandColors.error` foreground
-- **Connected:** Device info card (name, truncated pubkey, green status dot + "Connected"), action buttons: "Generate New Keypair" (ElevatedButton, `BrandColors.primary`), "Disconnect" (OutlinedButton), "Factory Reset" (OutlinedButton, `BrandColors.error` foreground)
-- **Pubkey mismatch:** Persistent warning banner above device info card — `Container` with `BrandColors.error.withAlpha(15)` fill, `BrandColors.error.withAlpha(60)` border, `Icons.warning_amber_rounded` 18px + message text. Action buttons: "Re-register" (ElevatedButton) and "Disconnect" (OutlinedButton). Signing blocked (no generate action shown).
+- **Connected:** Device info card (name, truncated pubkey, green status dot + "Connected"), action buttons: "Generate New Keypair" (ElevatedButton, `BrandColors.primary`), "Disconnect Device" (OutlinedButton), "Factory Reset" (OutlinedButton, `BrandColors.error` foreground)
+- **Pubkey mismatch:** Persistent warning banner above device info card — `Container` with `BrandColors.error.withAlpha(15)` fill, `BrandColors.error.withAlpha(60)` border, `Icons.warning_amber_rounded` 18px + message text. Action buttons: "Re-register" (ElevatedButton) and "Disconnect Device" (OutlinedButton). Signing blocked (no generate action shown).
 
 ### 3. Mnemonic Display Screen (`lib/features/hardware/mnemonic_display_screen.dart`)
 
@@ -195,11 +202,11 @@ Source: CONTEXT.md (locked decisions), REQUIREMENTS.md (requirement descriptions
 | Quiz error | "Incorrect — check your written phrase and try again." |
 | Pubkey mismatch banner | "Device mismatch — this hardware wallet's public key does not match the registered wallet address. Signing is blocked until resolved." |
 | Pubkey mismatch action — re-register | "Re-register Device" |
-| Pubkey mismatch action — disconnect | "Disconnect" |
+| Pubkey mismatch action — disconnect | "Disconnect Device" |
 | Factory reset confirm dialog title | "Factory Reset Hardware Wallet" |
 | Factory reset confirm dialog body | "This will permanently erase the device's private key. Hold the BOOT button for 5 seconds when prompted to confirm." |
 | Factory reset confirm button | "Reset Device" |
-| Factory reset cancel button | "Cancel" |
+| Factory reset cancel button | "Keep Device" |
 | Error — entropy failure | "Hardware entropy check failed. Keypair generation refused. Check device firmware." |
 | Error — connection timeout | "Could not reach device. Check USB connection and try again." |
 | Error — generation in progress | "Keypair generation in progress — this takes up to 30 seconds." |
@@ -244,7 +251,7 @@ Generation (PBKDF2 + SLIP-0010 on ESP32) takes up to 30 seconds. During generati
 ### Pubkey mismatch banner
 
 - Persistent `Container` banner pinned above device info card — not dismissable
-- Signing/generate actions hidden; only "Re-register Device" and "Disconnect" shown
+- Signing/generate actions hidden; only "Re-register Device" and "Disconnect Device" shown
 - Banner persists until user takes one of the two resolution actions
 - Re-register replaces stored pubkey with newly detected pubkey (after auth challenge)
 
