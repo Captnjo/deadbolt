@@ -1,4 +1,5 @@
 use std::io::{BufRead, BufReader, Write};
+use std::time::Instant;
 
 use super::types::WalletInfoDto;
 
@@ -123,4 +124,174 @@ pub fn connect_hardware_wallet(
         .register_hardware_wallet(&name, &address)
         .map_err(|e| e.to_string())?;
     Ok(WalletInfoDto::from_core(&info))
+}
+
+/// Generate a new BIP39 keypair on the hardware wallet.
+/// Returns the 12 mnemonic words for one-time display.
+/// Requires physical BOOT button confirmation on the device.
+pub fn generate_hardware_keypair(port_path: String) -> Result<Vec<String>, String> {
+    let mut port = serialport::new(&port_path, 115_200)
+        .timeout(std::time::Duration::from_secs(5))
+        .open()
+        .map_err(|e| format!("Failed to open port: {e}"))?;
+
+    // Init sequence (same as connect_hardware_wallet)
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    port.write_all(b"\n").map_err(|e| format!("Failed to send init: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let _ = port.clear(serialport::ClearBuffer::Input);
+
+    // Send generate command
+    send_command(&mut port, r#"{"cmd":"generate"}"#)?;
+
+    let mut reader = BufReader::new(port.try_clone().map_err(|e| e.to_string())?);
+
+    // Read responses — may get "generating" status first while awaiting button hold
+    let start = Instant::now();
+    let timeout = std::time::Duration::from_secs(60);
+    loop {
+        if start.elapsed() > timeout {
+            return Err("Generate timed out (60s)".to_string());
+        }
+        match read_json_line(&mut reader) {
+            Ok(line) => {
+                let resp: serde_json::Value = serde_json::from_str(&line)
+                    .map_err(|e| format!("Invalid JSON: {e}"))?;
+                let status = resp.get("status").and_then(|s| s.as_str()).unwrap_or("");
+                match status {
+                    "generating" => continue,
+                    "ok" => {
+                        let words: Vec<String> = resp.get("words")
+                            .and_then(|w| w.as_array())
+                            .ok_or("Missing words in response")?
+                            .iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect();
+                        if words.len() != 12 {
+                            return Err(format!("Expected 12 words, got {}", words.len()));
+                        }
+                        // Note: wallet registration happens in Flutter layer after mnemonic quiz
+                        return Ok(words);
+                    }
+                    "error" => {
+                        let msg = resp.get("msg").and_then(|m| m.as_str()).unwrap_or("unknown");
+                        return Err(format!("Generate failed: {msg}"));
+                    }
+                    _ => continue,
+                }
+            }
+            Err(_) => {
+                // Read timeout — keep waiting for button press
+                if start.elapsed() > timeout {
+                    return Err("Generate timed out".to_string());
+                }
+                continue;
+            }
+        }
+    }
+}
+
+/// Factory reset the hardware wallet. Erases entire NVS partition.
+/// Requires physical BOOT button confirmation (5 seconds).
+/// Device will reboot after reset.
+pub fn factory_reset_hardware(port_path: String) -> Result<(), String> {
+    let mut port = serialport::new(&port_path, 115_200)
+        .timeout(std::time::Duration::from_secs(5))
+        .open()
+        .map_err(|e| format!("Failed to open port: {e}"))?;
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    port.write_all(b"\n").map_err(|e| format!("Failed to send init: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let _ = port.clear(serialport::ClearBuffer::Input);
+
+    send_command(&mut port, r#"{"cmd":"reset"}"#)?;
+
+    let mut reader = BufReader::new(port.try_clone().map_err(|e| e.to_string())?);
+    let start = Instant::now();
+    let timeout = std::time::Duration::from_secs(30);
+    loop {
+        if start.elapsed() > timeout {
+            return Err("Factory reset timed out".to_string());
+        }
+        match read_json_line(&mut reader) {
+            Ok(line) => {
+                let resp: serde_json::Value = serde_json::from_str(&line)
+                    .map_err(|e| format!("Invalid JSON: {e}"))?;
+                let status = resp.get("status").and_then(|s| s.as_str()).unwrap_or("");
+                match status {
+                    "pending" => continue,
+                    "ok" => return Ok(()),
+                    "error" => {
+                        let msg = resp.get("msg").and_then(|m| m.as_str()).unwrap_or("unknown");
+                        return Err(format!("Reset failed: {msg}"));
+                    }
+                    _ => continue,
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+}
+
+/// Verify the hardware wallet's entropy source is working correctly.
+pub fn check_hardware_entropy(port_path: String) -> Result<(), String> {
+    let mut port = serialport::new(&port_path, 115_200)
+        .timeout(std::time::Duration::from_secs(5))
+        .open()
+        .map_err(|e| format!("Failed to open port: {e}"))?;
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    port.write_all(b"\n").map_err(|e| format!("Failed to send init: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let _ = port.clear(serialport::ClearBuffer::Input);
+
+    send_command(&mut port, r#"{"cmd":"entropy_check"}"#)?;
+    let mut reader = BufReader::new(port.try_clone().map_err(|e| e.to_string())?);
+    let resp_line = read_json_line(&mut reader)?;
+    let resp: serde_json::Value = serde_json::from_str(&resp_line)
+        .map_err(|e| format!("Invalid JSON: {e}"))?;
+    if resp.get("status").and_then(|s| s.as_str()) == Some("ok") {
+        Ok(())
+    } else {
+        let msg = resp.get("msg").and_then(|m| m.as_str()).unwrap_or("entropy_check_failed");
+        Err(format!("Entropy check failed: {msg}"))
+    }
+}
+
+/// Get the public key from a connected hardware wallet without full registration.
+/// Used for auto-connect pubkey verification (HWLT-03).
+pub fn get_hardware_pubkey(port_path: String) -> Result<String, String> {
+    let mut port = serialport::new(&port_path, 115_200)
+        .timeout(std::time::Duration::from_secs(5))
+        .open()
+        .map_err(|e| format!("Failed to open port: {e}"))?;
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    port.write_all(b"\n").map_err(|e| format!("Failed to send init: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let _ = port.clear(serialport::ClearBuffer::Input);
+
+    send_command(&mut port, r#"{"cmd":"ping"}"#)?;
+    let mut reader = BufReader::new(port.try_clone().map_err(|e| e.to_string())?);
+    let ping_resp = read_json_line(&mut reader)?;
+    let ping: serde_json::Value = serde_json::from_str(&ping_resp)
+        .map_err(|e| format!("Invalid ping: {e}"))?;
+    if ping.get("status").and_then(|s| s.as_str()) != Some("ok") {
+        return Err("Ping failed".to_string());
+    }
+
+    send_command(reader.get_mut(), r#"{"cmd":"pubkey"}"#)?;
+    let key_resp = read_json_line(&mut reader)?;
+    let key: serde_json::Value = serde_json::from_str(&key_resp)
+        .map_err(|e| format!("Invalid pubkey response: {e}"))?;
+    if key.get("status").and_then(|s| s.as_str()) != Some("ok") {
+        let msg = key.get("msg").and_then(|m| m.as_str()).unwrap_or("unknown");
+        return Err(format!("Pubkey failed: {msg}"));
+    }
+
+    key.get("address")
+        .and_then(|a| a.as_str())
+        .map(String::from)
+        .ok_or("Missing address field".to_string())
 }
