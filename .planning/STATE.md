@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-01-PLAN.md (BIP39 firmware rewrite)
-last_updated: "2026-03-20T08:45:05.031Z"
+stopped_at: Completed 05-04-PLAN.md (hardware wallet Flutter UI screens)
+last_updated: "2026-03-20T08:50:57.829Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -64,6 +64,7 @@ Plan: 2 of 5
 | Phase 05-esp32-firmware-rewrite P02 | 2 | 2 tasks | 2 files |
 | Phase 05-esp32-firmware-rewrite P03 | 3 | 2 tasks | 6 files |
 | Phase 05-esp32-firmware-rewrite P01 | 14 | 2 tasks | 6 files |
+| Phase 05-esp32-firmware-rewrite P04 | 18 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work:
 - [Phase 05-esp32-firmware-rewrite]: generate sends status:generating before 5s BOOT wait so Rust bridge can extend read timeout (PBKDF2 takes 1-3s on ESP32-C3)
 - [Phase 05-esp32-firmware-rewrite]: setup() does NOT auto-generate on first boot; device starts with no key until generate command is explicitly sent
 - [Phase 05-esp32-firmware-rewrite]: loadKeypair migrates old plaintext privkey to enc_privkey on first boot, then removes plaintext entry
+- [Phase 05-04]: hw_stubs imported separately in hardware_wallet_screen — hardware.dart (FRB-generated) has scan/connect only; generate/reset/pubkey are in hardware_stubs.dart
+- [Phase 05-04]: context.go() enforced in all hardware wallet screens — prevents back-navigation to mnemonic display after quiz completion
 
 ### Pending Todos
 
@@ -144,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T08:45:05.029Z
-Stopped at: Completed 05-01-PLAN.md (BIP39 firmware rewrite)
+Last session: 2026-03-20T08:50:57.826Z
+Stopped at: Completed 05-04-PLAN.md (hardware wallet Flutter UI screens)
 Resume file: None

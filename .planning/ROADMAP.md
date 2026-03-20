@@ -106,7 +106,7 @@ Plans:
   3. When an ESP32 reconnects, the app verifies the device's pubkey matches the registered wallet address and surfaces a warning if it does not match
   4. The ESP32 firmware uses a verified hardware entropy source; the firmware fails loudly at runtime if entropy quality cannot be confirmed
   5. The ESP32 seed is stored encrypted in NVS; a factory reset erases the entire NVS partition rather than soft-deleting the key entry
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [ ] 05-01-PLAN.md — Firmware: BIP39 wordlist + generation, SLIP-0010 derivation, AES-256 NVS encryption, entropy validation, new serial commands
@@ -142,7 +142,7 @@ Phases execute in numeric order. Phase 5 is independent and may run in parallel 
 | 2. Agent API Bridge | 4/4 | Complete   | 2026-03-17 |
 | 3. Agent Signing Prompt | 6/6 | Complete   | 2026-03-18 |
 | 4. Guardrails Engine | 4/4 | Complete    | 2026-03-19 |
-| 5. ESP32 Firmware Rewrite | 3/5 | In Progress|  |
+| 5. ESP32 Firmware Rewrite | 4/5 | In Progress|  |
 | 6. Navigation, Settings, and Polish | 0/3 | Planned | - |
 
 ---

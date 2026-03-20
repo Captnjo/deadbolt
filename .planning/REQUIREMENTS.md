@@ -52,7 +52,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **HWLT-02**: UI updates connection status when ESP32 connects/disconnects
 - [x] **HWLT-03**: App verifies device pubkey matches registered wallet address on reconnect
 - [x] **HWLT-04**: User can generate new keypair on ESP32 with BIP39 mnemonic backup
-- [ ] **HWLT-05**: Mnemonic displayed once during setup for user to write down
+- [x] **HWLT-05**: Mnemonic displayed once during setup for user to write down
 - [x] **HWLT-06**: Hardware Wallet has its own sidebar entry (always visible, guides setup if not connected)
 
 ### Infrastructure Rebuilds
@@ -170,7 +170,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HWLT-02 | Phase 5 | Complete |
 | HWLT-03 | Phase 5 | Complete |
 | HWLT-04 | Phase 5 | Complete |
-| HWLT-05 | Phase 5 | Pending |
+| HWLT-05 | Phase 5 | Complete |
 | HWLT-06 | Phase 5 | Complete |
 | INFR-01 | Phase 5 | Complete |
 | INFR-02 | Phase 5 | Complete |
