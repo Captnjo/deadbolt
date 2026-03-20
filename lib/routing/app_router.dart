@@ -15,6 +15,7 @@ import '../features/swap/swap_screen.dart';
 import '../features/nft/send_nft_screen.dart';
 import '../features/address_book/address_book_screen.dart';
 import '../features/agent/agent_api_screen.dart';
+import '../features/hardware/hardware_wallet_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/onboarding/onboarding_shell.dart';
 import '../features/lock/lock_screen.dart';
@@ -122,6 +123,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/agent-api',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: AgentApiScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/hardware',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: HardwareWalletScreen(),
             ),
           ),
           GoRoute(

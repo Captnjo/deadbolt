@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/hardware_connection_provider.dart';
 import '../../providers/wallet_emoji_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../theme/brand_theme.dart';
@@ -23,7 +24,8 @@ class WalletDrawer extends ConsumerWidget {
     final walletsAsync = ref.watch(walletListProvider);
     final activeAddress = ref.watch(activeWalletProvider);
     final emojiMap = ref.watch(walletEmojiProvider).valueOrNull ?? {};
-    final hwConnected = ref.watch(hwDetectedProvider).valueOrNull ?? false;
+    final hwConn = ref.watch(hardwareConnectionProvider).valueOrNull ??
+        const HwConnectionInfo.notPaired();
 
     return Container(
       width: 280,
@@ -72,7 +74,7 @@ class WalletDrawer extends ConsumerWidget {
                     emoji: emoji,
                     isActive: isActive,
                     isHardware: w.source == 'hardware',
-                    isHwConnected: hwConnected,
+                    isHwConnected: hwConn.state == HwConnState.connected,
                     onTap: () {
                       ref
                           .read(walletListProvider.notifier)
@@ -83,6 +85,47 @@ class WalletDrawer extends ConsumerWidget {
                 },
               ),
             ),
+          ),
+          const Divider(height: 1),
+          // Permanent Hardware Wallet entry — always visible in all 3 states.
+          ListTile(
+            leading: Icon(
+              hwConn.state == HwConnState.notPaired
+                  ? Icons.usb_outlined
+                  : Icons.usb,
+              size: 18,
+              color: hwConn.state == HwConnState.connected
+                  ? BrandColors.primary
+                  : hwConn.state == HwConnState.notPaired
+                      ? BrandColors.textSecondary
+                      : BrandColors.textDisabled,
+            ),
+            title: Text(
+              hwConn.state == HwConnState.notPaired
+                  ? 'Hardware Wallet'
+                  : hwConn.deviceName ?? 'Hardware Wallet',
+              style: const TextStyle(fontSize: 14),
+            ),
+            trailing: hwConn.state == HwConnState.notPaired
+                ? Badge(
+                    label: const Text('Setup', style: TextStyle(fontSize: 9)),
+                    backgroundColor: BrandColors.primary,
+                    child: const SizedBox.shrink(),
+                  )
+                : hwConn.state == HwConnState.connected
+                    ? Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: BrandColors.success,
+                        ),
+                      )
+                    : null,
+            onTap: () {
+              onClose();
+              GoRouter.of(context).go('/hardware');
+            },
           ),
           const Divider(height: 1),
           Padding(

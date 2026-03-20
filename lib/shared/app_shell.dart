@@ -9,6 +9,7 @@ import '../providers/agent_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/intent.dart';
 import '../providers/intent_provider.dart';
+import '../providers/hardware_connection_provider.dart';
 import '../providers/wallet_emoji_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../routing/app_router.dart';
@@ -32,7 +33,7 @@ class _AppShellState extends ConsumerState<AppShell>
   /// FocusNode for KeyboardListener activity detection.
   final FocusNode _activityFocusNode = FocusNode();
 
-  static const _routes = ['/dashboard', '/history', '/address-book', '/agent-api', '/settings'];
+  static const _routes = ['/dashboard', '/history', '/address-book', '/agent-api', '/hardware', '/settings'];
 
   @override
   void initState() {
@@ -74,6 +75,45 @@ class _AppShellState extends ConsumerState<AppShell>
   void _openDrawer() => _drawerController.forward();
   void _closeDrawer() => _drawerController.reverse();
 
+  /// Builds the NavigationRail icon for the Hardware Wallet destination,
+  /// reflecting the current [HwConnState] with appropriate color and badge.
+  Widget _buildHwNavIcon(HwConnectionInfo hwConn, bool selected) {
+    switch (hwConn.state) {
+      case HwConnState.notPaired:
+        return Badge(
+          label: const Text('Setup', style: TextStyle(fontSize: 9)),
+          backgroundColor: BrandColors.primary,
+          child: Icon(
+            selected ? Icons.usb : Icons.usb_outlined,
+            color: BrandColors.textSecondary,
+            size: 18,
+          ),
+        );
+      case HwConnState.disconnected:
+        return Icon(
+          selected ? Icons.usb : Icons.usb_outlined,
+          color: BrandColors.textDisabled,
+          size: 18,
+        );
+      case HwConnState.connected:
+        return Icon(
+          selected ? Icons.usb : Icons.usb_outlined,
+          color: BrandColors.primary,
+          size: 18,
+        );
+      case HwConnState.pubkeyMismatch:
+        return Badge(
+          label: const Text('!', style: TextStyle(fontSize: 9)),
+          backgroundColor: BrandColors.error,
+          child: Icon(
+            selected ? Icons.usb : Icons.usb_outlined,
+            color: BrandColors.error,
+            size: 18,
+          ),
+        );
+    }
+  }
+
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     for (var i = 0; i < _routes.length; i++) {
@@ -91,6 +131,10 @@ class _AppShellState extends ConsumerState<AppShell>
 
     // Badge count for Agent API icon.
     final pendingCount = ref.watch(pendingIntentCountProvider);
+
+    // Hardware wallet connection state — drives NavigationRail icon and badge.
+    final hwConn = ref.watch(hardwareConnectionProvider).valueOrNull ??
+        const HwConnectionInfo.notPaired();
 
     // Auto-show signing prompt when a new intent arrives and app is unlocked.
     ref.listen<PendingIntent?>(firstPendingIntentProvider, (prev, next) {
@@ -115,6 +159,23 @@ class _AppShellState extends ConsumerState<AppShell>
       final serverState = next.valueOrNull;
       if (serverState?.status == ServerStatus.running) {
         ref.read(intentProvider.notifier).resubscribe();
+      }
+    });
+
+    // Show disconnect snackbar when hardware wallet transitions from connected to disconnected.
+    ref.listen<AsyncValue<HwConnectionInfo>>(hardwareConnectionProvider,
+        (prev, next) {
+      final prevState = prev?.valueOrNull?.state;
+      final nextState = next.valueOrNull?.state;
+      if (prevState == HwConnState.connected &&
+          nextState == HwConnState.disconnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hardware wallet disconnected'),
+            duration: Duration(seconds: 3),
+            backgroundColor: BrandColors.error,
+          ),
+        );
       }
     });
 
@@ -147,6 +208,11 @@ class _AppShellState extends ConsumerState<AppShell>
           child: const Icon(Icons.lan),
         ),
         label: const Text('Agent API'),
+      ),
+      NavigationRailDestination(
+        icon: _buildHwNavIcon(hwConn, false),
+        selectedIcon: _buildHwNavIcon(hwConn, true),
+        label: const Text('Hardware'),
       ),
       const NavigationRailDestination(
         icon: Icon(Icons.settings_outlined),
