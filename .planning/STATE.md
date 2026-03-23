@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-stopped_at: Completed 05-04-PLAN.md (hardware wallet Flutter UI screens)
+status: checkpoint
+stopped_at: "Phase 05 plan 05-05 task 2: human verification checkpoint — plans 01-04 complete, automated checks passed, awaiting E2E testing"
 last_updated: "2026-03-20T08:50:57.829Z"
 progress:
   total_phases: 6
@@ -24,7 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 05 (esp32-firmware-rewrite) — EXECUTING
-Plan: 2 of 5
+Plan: 5 of 5 (05-05 checkpoint: human verification pending)
+Plans 01-04: COMPLETE | Plan 05 Task 1 (automated checks): PASSED
 
 ## Performance Metrics
 
