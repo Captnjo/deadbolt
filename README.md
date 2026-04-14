@@ -1,3 +1,13 @@
+> ## ⚠️ This project is sunset
+>
+> Deadbolt V1 is archived as of April 2026. Active development has moved to
+> [**Deadbolt Mesh**](https://github.com/Captnjo/deadbolt-mesh) — an on-chain
+> permission layer for Solana agents (Anchor program + TS SDK).
+>
+> V1 remains here as a reference implementation. No new issues, PRs, or releases.
+
+---
+
 # Deadbolt
 
 A cross-platform Solana wallet with ESP32 hardware signer support and an embedded agent API. Built with Flutter (UI) and Rust (crypto, signing, transaction building). Private keys never leave Rust.
